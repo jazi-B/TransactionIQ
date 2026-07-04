@@ -45,7 +45,7 @@ export default function AppShell({
       <div className="mx-auto grid min-h-screen max-w-[1560px] lg:grid-cols-[300px_minmax(0,1fr)]">
         <aside className="border-b border-slate-200 bg-white px-4 py-5 sm:px-6 sm:py-8 lg:border-b-0 lg:border-r">
           <NavLink
-            to="/"
+            to={currentUser?.role === "admin" ? "/dashboard" : "/upload"}
             className="inline-flex items-center gap-3 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-100"
           >
             <ShieldCheck className="h-4 w-4 text-sky-600" />

@@ -1,9 +1,8 @@
 import { useEffect } from "react"
-import { BrowserRouter, Route, Routes } from "react-router-dom"
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
 
 import ProtectedRoute from "@/components/ProtectedRoute"
 import Dashboard from "@/pages/Dashboard"
-import Home from "@/pages/Home"
 import Login from "@/pages/Login"
 import Transactions from "@/pages/Transactions"
 import Upload from "@/pages/Upload"
@@ -20,7 +19,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
         <Route
           path="/dashboard"

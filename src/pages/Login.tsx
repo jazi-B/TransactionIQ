@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import { ArrowRight, LockKeyhole, ShieldCheck } from "lucide-react"
-import { Link, useLocation, useNavigate } from "react-router-dom"
+import { useLocation, useNavigate } from "react-router-dom"
 
 import { useAppStore } from "@/store/appStore"
 import type { LoginScope } from "@/types/app"
@@ -12,6 +12,7 @@ export default function Login() {
   const register = useAppStore((state) => state.register)
   const loginError = useAppStore((state) => state.loginError)
   const isAuthLoading = useAppStore((state) => state.isAuthLoading)
+  const currentUser = useAppStore((state) => state.currentUser)
 
   const [mode, setMode] = useState<"signin" | "register">("signin")
   const [scope, setScope] = useState<LoginScope>("admin")
@@ -22,6 +23,13 @@ export default function Login() {
   const redirectTarget =
     ((location.state as { from?: string } | null)?.from as string | undefined) ||
     (scope === "admin" ? "/dashboard" : "/upload")
+
+  // Auto-redirect if already logged in
+  useEffect(() => {
+    if (currentUser) {
+      navigate(currentUser.role === "admin" ? "/dashboard" : "/upload", { replace: true })
+    }
+  }, [currentUser, navigate, redirectTarget])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -42,47 +50,27 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-[#f4f7fb] px-4 py-4 text-slate-900 sm:px-6 sm:py-8">
       <div className="mx-auto grid min-h-[calc(100vh-2rem)] max-w-[1360px] overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_20px_80px_rgba(15,23,42,0.08)] lg:min-h-[calc(100vh-4rem)] lg:grid-cols-[1.05fr_0.95fr]">
-        <section className="relative overflow-hidden bg-[linear-gradient(180deg,#0f172a_0%,#111827_100%)] px-6 py-8 text-white sm:px-10 sm:py-12">
+        <section className="relative flex flex-col justify-between overflow-hidden bg-[linear-gradient(180deg,#0f172a_0%,#111827_100%)] px-6 py-8 text-white sm:px-10 sm:py-12">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.18),transparent_28%),radial-gradient(circle_at_20%_25%,rgba(148,163,184,0.14),transparent_30%)]" />
-          <div className="relative">
-            <Link
-              to="/"
-              className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-100"
-            >
+          
+          <div className="relative z-10">
+            <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-100">
               <ShieldCheck className="h-4 w-4 text-sky-300" />
               Transaction IQ
-            </Link>
-
-            <p className="mt-8 text-xs uppercase tracking-[0.35em] text-slate-400 sm:mt-10">
-              Enterprise transaction controls
-            </p>
-            <h1 className="mt-5 max-w-xl text-4xl font-semibold leading-tight tracking-[-0.04em] sm:text-5xl">
-              Proper role-based access for admins and staff.
-            </h1>
-            <p className="mt-5 max-w-xl text-sm leading-7 text-slate-300 sm:text-base sm:leading-8">
-              Admins monitor the whole system. Staff members only upload, review,
-              and access their own work. Staff accounts can be created by admin
-              or self-registered from this screen.
-            </p>
-
-            <div className="mt-8 grid gap-4 sm:mt-10 sm:grid-cols-2">
-              <div className="rounded-[24px] border border-white/10 bg-white/5 p-5">
-                <p className="text-sm text-slate-400">Admin portal</p>
-                <p className="mt-3 text-xl font-medium text-white">Full visibility</p>
-                <p className="mt-2 text-sm leading-6 text-slate-300">
-                  Dashboard, activity tracking, reports, transactions, and
-                  complete system monitoring.
-                </p>
-              </div>
-              <div className="rounded-[24px] border border-white/10 bg-white/5 p-5">
-                <p className="text-sm text-slate-400">User portal</p>
-                <p className="mt-3 text-xl font-medium text-white">Own work only</p>
-                <p className="mt-2 text-sm leading-6 text-slate-300">
-                  Upload receipts, review extracted fields, and access only
-                  personal submission history.
-                </p>
-              </div>
             </div>
+          </div>
+
+          <div className="relative z-10 my-auto py-12">
+            <h1 className="max-w-xl text-4xl font-bold leading-tight tracking-[-0.04em] sm:text-5xl lg:text-6xl">
+              Welcome back to Transaction IQ
+            </h1>
+            <p className="mt-6 max-w-md text-base leading-7 text-slate-300 sm:text-lg sm:leading-8">
+              A secure, role-based portal for enterprise transaction controls. Access your dashboard, review submissions, and manage system resources.
+            </p>
+          </div>
+
+          <div className="relative z-10 text-xs text-slate-500">
+            © {new Date().getFullYear()} Transaction IQ. All rights reserved.
           </div>
         </section>
 
