@@ -7,7 +7,15 @@ from pydantic import BaseModel
 
 UserRole = Literal["admin", "staff"]
 TransactionStatus = Literal["approved", "review", "duplicate_blocked"]
-TransactionChannel = Literal["JazzCash", "Easypaisa", "Bank Transfer"]
+TransactionChannel = Literal[
+    "Payment Receipt",
+    "Invoice",
+    "Bank Transfer",
+    "Cash Deposit",
+    "Other",
+    "JazzCash",
+    "Easypaisa",
+]
 
 
 class LoginRequest(BaseModel):

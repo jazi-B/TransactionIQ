@@ -4,14 +4,24 @@ import type {
   DashboardSummary,
   LoginScope,
   ManagedUser,
+  RegisterUserPayload,
   Transaction,
   UploadDraft,
   UploadProcessingResult,
   User,
 } from "@/types/app"
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8001/api"
+function normalizeApiBaseUrl(value?: string) {
+  const fallback = "http://127.0.0.1:8001/api"
+  if (!value) {
+    return fallback
+  }
+
+  const normalized = value.trim().replace(/^["'`]+|["'`]+$/g, "").replace(/\/+$/, "")
+  return normalized || fallback
+}
+
+const API_BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL)
 
 export class ApiError extends Error {
   status: number
@@ -44,7 +54,7 @@ type LoginResponse = {
 type TransactionApi = {
   id: string
   transaction_id: string
-  channel: "JazzCash" | "Easypaisa" | "Bank Transfer"
+  channel: UploadDraft["channel"]
   uploader_id: string
   uploader_name: string
   date: string
@@ -171,6 +181,21 @@ export async function loginWithScope(
 export async function fetchCurrentUser(token: string) {
   const result = await request<LoginResponse["user"]>("/auth/me", { token })
   return mapUser(result)
+}
+
+export async function registerStaffUser(payload: RegisterUserPayload) {
+  const result = await request<LoginResponse>("/auth/register", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  })
+
+  return {
+    token: result.access_token,
+    user: mapUser(result.user),
+  }
 }
 
 export async function signOut(token: string) {

@@ -50,11 +50,11 @@ export default function Home() {
               A professional control layer for screenshot-based transaction submissions.
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
-              Upload payment screenshots, extract transaction details with OCR,
-              review the extracted fields, and block duplicate transaction IDs
-              before they enter the record. TransactionIQ is designed for finance
-              operations dealing with high-volume staff submissions across
-              JazzCash, Easypaisa, and bank transfers.
+              Upload payment proofs, invoices, receipts, and transfer slips,
+              extract transaction details, review the extracted fields, and
+              block duplicate identifiers before they enter the record.
+              TransactionIQ is designed for finance operations handling
+              high-volume staff submissions across multiple payment channels.
             </p>
 
             <div className="mt-10 flex flex-wrap gap-4">
@@ -62,14 +62,14 @@ export default function Home() {
                 to="/login"
                 className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
               >
-                Open working demo
+                Open secure workspace
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
-                to="/transactions"
+                to="/login"
                 className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
               >
-                Review sample records
+                Review workflow access
               </Link>
             </div>
           </div>
@@ -79,14 +79,14 @@ export default function Home() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.35em] text-slate-400">
-                    Live validation
+                    Automated review
                   </p>
                   <h2 className="mt-3 text-2xl font-semibold text-slate-950">
-                    Transaction review card
+                    Submission review card
                   </h2>
                 </div>
                 <div className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
-                  Unique save passed
+                  Ready for submission
                 </div>
               </div>
 
@@ -94,13 +94,13 @@ export default function Home() {
                 <div className="rounded-[24px] border border-slate-200 bg-white p-4">
                   <div className="flex items-center justify-between text-sm text-slate-600">
                     <span>Transaction ID</span>
-                    <span className="font-medium text-slate-950">TXN00123</span>
+                    <span className="font-medium text-slate-950">Detected automatically</span>
                   </div>
                   <div className="mt-3 h-2 rounded-full bg-slate-200">
                     <div className="h-2 w-[92%] rounded-full bg-slate-950" />
                   </div>
                   <p className="mt-3 text-xs text-slate-500">
-                    OCR confidence 92%, editable before save
+                    Extraction result ready for operator review before save.
                   </p>
                 </div>
 
@@ -110,10 +110,10 @@ export default function Home() {
                       Detection
                     </p>
                     <p className="mt-3 text-lg font-medium text-slate-950">
-                      JazzCash screenshot
+                      Invoice or payment proof
                     </p>
                     <p className="mt-2 text-sm leading-6 text-slate-500">
-                      Date, time, amount, and sender parsed successfully.
+                      Key identifiers, date, time, amount, and parties extracted for review.
                     </p>
                   </div>
                   <div className="rounded-[24px] border border-amber-200 bg-amber-50 p-4">
@@ -166,7 +166,7 @@ export default function Home() {
               Core modules
             </p>
             <h2 className="mt-4 text-4xl font-semibold tracking-[-0.03em] text-slate-950">
-              Designed with product discipline instead of flashy placeholder blocks.
+              Built for controlled financial operations instead of placeholder marketing screens.
             </h2>
           </div>
 
@@ -230,10 +230,10 @@ export default function Home() {
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div className="max-w-3xl">
                 <p className="text-xs uppercase tracking-[0.35em] text-slate-400">
-                  Working demo ready
+                  Production-ready flow
                 </p>
                 <h2 className="mt-4 text-4xl font-semibold tracking-[-0.03em]">
-                  Start with the secure sign-in and test a real duplicate validation flow.
+                  Start with secure sign-in and move directly into intake, review, and duplicate prevention.
                 </h2>
               </div>
 

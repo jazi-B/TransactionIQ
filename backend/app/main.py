@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 
+from .config import get_config
 from .deps import get_current_user, require_admin
 from .repository import repository
 from .schemas import (
@@ -19,11 +20,12 @@ from .schemas import (
 )
 from .security import verify_password
 
+config = get_config()
 app = FastAPI(title="TransactionIQ API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=list(config.cors_allowed_origins),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -66,6 +68,20 @@ def admin_login(payload: LoginRequest) -> LoginResponse:
 @app.post("/api/auth/user/login", response_model=LoginResponse)
 def user_login(payload: LoginRequest) -> LoginResponse:
     return perform_login(payload, "staff")
+
+
+@app.post("/api/auth/register", response_model=LoginResponse, status_code=status.HTTP_201_CREATED)
+def register_user(payload: CreateUserRequest) -> LoginResponse:
+    try:
+        user, _managed_user = repository.register_user(payload)
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(error),
+        ) from error
+
+    token = repository.create_session(user["id"])
+    return LoginResponse(access_token=token, user=repository.user_response(user))
 
 
 @app.get("/api/auth/me", response_model=UserResponse)

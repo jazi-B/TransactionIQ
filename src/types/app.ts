@@ -25,18 +25,22 @@ export type CreateManagedUserPayload = {
   password: string
 }
 
-export type LoginPreset = {
-  id: string
+export type RegisterUserPayload = {
   name: string
   email: string
   password: string
-  role: UserRole
-  department: string
 }
 
 export type TransactionStatus = "approved" | "review" | "duplicate_blocked"
 
-export type TransactionChannel = "JazzCash" | "Easypaisa" | "Bank Transfer"
+export type TransactionChannel =
+  | "Payment Receipt"
+  | "Invoice"
+  | "Bank Transfer"
+  | "Cash Deposit"
+  | "Other"
+  | "JazzCash"
+  | "Easypaisa"
 
 export type Transaction = {
   id: string

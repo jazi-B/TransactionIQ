@@ -114,7 +114,22 @@ class SupabaseRepository:
         )
         return result if isinstance(result, list) else []
 
+    def _delete(self, table: str, filters: dict[str, str]) -> list[dict]:
+        result = self._request(
+            "DELETE",
+            table,
+            query=filters,
+            headers={"Prefer": "return=representation"},
+        )
+        return result if isinstance(result, list) else []
+
+    def _remove_placeholder_seed_data(self) -> None:
+        self._delete("transactions", {"id": "in.(record-001,record-002,record-003)"})
+        self._delete("activity_logs", {"id": "in.(activity-001,activity-002,activity-003)"})
+        self._delete("app_users", {"id": "eq.user-staff-01", "email": "eq.staff@transactioniq.local"})
+
     def _ensure_seed_data(self) -> None:
+        self._remove_placeholder_seed_data()
         if not self._select("app_users", limit=1):
             users = [
                 {
@@ -126,16 +141,6 @@ class SupabaseRepository:
                     "department": "Finance Control",
                     "is_active": True,
                     "created_at": "2026-07-01T08:00:00",
-                },
-                {
-                    "id": "user-staff-01",
-                    "name": "Areeba Khan",
-                    "email": "staff@transactioniq.local",
-                    "password": "staff123",
-                    "role": "staff",
-                    "department": "Regional Sales",
-                    "is_active": True,
-                    "created_at": "2026-07-02T09:30:00",
                 },
             ]
             payload = []
@@ -155,83 +160,6 @@ class SupabaseRepository:
                     }
                 )
             self._insert("app_users", payload)
-
-        if not self._select("transactions", limit=1):
-            self._insert(
-                "transactions",
-                [
-                    {
-                        "id": "record-001",
-                        "transaction_id": "TXN00123",
-                        "channel": "JazzCash",
-                        "uploader_id": "user-staff-01",
-                        "uploader_name": "Areeba Khan",
-                        "date": "2026-07-04",
-                        "time": "09:42 AM",
-                        "amount": "PKR 24,500",
-                        "sender": "Muhammad Ahsan",
-                        "receiver": "IQ Collections",
-                        "receipt_name": "jazzcash-09-42.png",
-                        "status": "approved",
-                        "created_at": "2026-07-04T09:42:00",
-                    },
-                    {
-                        "id": "record-002",
-                        "transaction_id": "TXN00124",
-                        "channel": "Bank Transfer",
-                        "uploader_id": "user-staff-01",
-                        "uploader_name": "Areeba Khan",
-                        "date": "2026-07-04",
-                        "time": "10:06 AM",
-                        "amount": "PKR 18,000",
-                        "sender": "Atlas Holdings",
-                        "receiver": "IQ Collections",
-                        "receipt_name": "bank-slip-10-06.jpg",
-                        "status": "review",
-                        "created_at": "2026-07-04T10:06:00",
-                    },
-                    {
-                        "id": "record-003",
-                        "transaction_id": "TXN00125",
-                        "channel": "Easypaisa",
-                        "uploader_id": "user-staff-01",
-                        "uploader_name": "Areeba Khan",
-                        "date": "2026-07-03",
-                        "time": "06:11 PM",
-                        "amount": "PKR 8,750",
-                        "sender": "Saif Traders",
-                        "receiver": "IQ Collections",
-                        "receipt_name": "easypaisa-18-11.png",
-                        "status": "approved",
-                        "created_at": "2026-07-03T18:11:00",
-                    },
-                ],
-            )
-
-        if not self._select("activity_logs", limit=1):
-            self._insert(
-                "activity_logs",
-                [
-                    {
-                        "id": "activity-001",
-                        "text": "Duplicate blocked for TXN00126 from a JazzCash upload.",
-                        "tone": "warning",
-                        "created_at": "2026-07-04T10:22:00",
-                    },
-                    {
-                        "id": "activity-002",
-                        "text": "Areeba Khan corrected OCR mismatch before saving TXN00123.",
-                        "tone": "neutral",
-                        "created_at": "2026-07-04T09:46:00",
-                    },
-                    {
-                        "id": "activity-003",
-                        "text": "Monthly operations export was generated by Finance Admin.",
-                        "tone": "success",
-                        "created_at": "2026-07-04T08:15:00",
-                    },
-                ],
-            )
 
     def create_session(self, user_id: str) -> str:
         token = create_access_token()
@@ -345,6 +273,41 @@ class SupabaseRepository:
             },
         )
         return self.managed_user_response(inserted[0])
+
+    def register_user(self, payload: CreateUserRequest) -> tuple[dict, ManagedUserResponse]:
+        if self.find_user_by_email(payload.email):
+            raise ValueError("A user with this email already exists.")
+
+        rows = self._select("app_users")
+        staff_count = len([user for user in rows if user["role"] == "staff"])
+        user_id = f"user-staff-{staff_count + 1:02d}"
+        created_at = datetime.utcnow().isoformat()
+        salt = f"salt-{user_id}"
+        inserted = self._insert(
+            "app_users",
+            {
+                "id": user_id,
+                "name": payload.name.strip(),
+                "email": payload.email.strip().lower(),
+                "password_hash": hash_password(payload.password, salt),
+                "salt": salt,
+                "role": "staff",
+                "department": "Operations",
+                "is_active": True,
+                "created_at": created_at,
+            },
+        )
+        self._insert(
+            "activity_logs",
+            {
+                "id": f"activity-{int(datetime.utcnow().timestamp() * 1000)}",
+                "text": f"{payload.name.strip()} completed staff account registration.",
+                "tone": "success",
+                "created_at": created_at,
+            },
+        )
+        user = inserted[0]
+        return user, self.managed_user_response(user)
 
     def deactivate_user(self, user_id: str) -> ManagedUserResponse | None:
         user = self.get_user(user_id)

@@ -1,4 +1,4 @@
-import type { LoginPreset, UploadDraft, UserRole } from "@/types/app"
+import type { UploadDraft, UserRole } from "@/types/app"
 
 type AppNavigationItem = {
   label: string
@@ -7,17 +7,17 @@ type AppNavigationItem = {
 }
 
 export const heroMetrics = [
-  { label: "Duplicate attempts blocked", value: "12,480", detail: "last 90 days" },
-  { label: "Average OCR confidence", value: "94.2%", detail: "operations baseline" },
-  { label: "Finance teams onboarded", value: "37", detail: "enterprise clients" },
-  { label: "Review turnaround", value: "43 sec", detail: "average per upload" },
+  { label: "Automated intake", value: "Always on", detail: "upload, extract, validate" },
+  { label: "Operator review", value: "Editable", detail: "fix extracted fields before save" },
+  { label: "Duplicate control", value: "Instant", detail: "pre-save collision blocking" },
+  { label: "Access model", value: "Role-based", detail: "admin oversight, staff isolation" },
 ]
 
 export const featureCards = [
   {
     title: "Controlled intake",
     description:
-      "Staff uploads JazzCash, Easypaisa, or bank transfer screenshots into a structured intake workflow.",
+      "Staff uploads receipts, invoices, deposit slips, and transfer proofs into a controlled intake workflow.",
   },
   {
     title: "OCR verification",
@@ -40,7 +40,7 @@ export const workflowSteps = [
   {
     id: "01",
     title: "Receipt submission",
-    text: "Employee uploads a receipt image to the controlled transaction intake queue.",
+    text: "Employee uploads a payment proof, invoice image, or receipt into the controlled intake queue.",
   },
   {
     id: "02",
@@ -55,7 +55,7 @@ export const workflowSteps = [
   {
     id: "04",
     title: "Duplicate validation",
-    text: "System compares the transaction ID against previous records and blocks collisions.",
+    text: "System compares extracted identifiers against previous records and blocks collisions.",
   },
   {
     id: "05",
@@ -64,27 +64,8 @@ export const workflowSteps = [
   },
 ]
 
-export const loginPresets: LoginPreset[] = [
-  {
-    id: "user-admin-01",
-    name: "Finance Admin",
-    email: "admin@transactioniq.local",
-    password: "admin123",
-    role: "admin",
-    department: "Finance Control",
-  },
-  {
-    id: "user-staff-01",
-    name: "Areeba Khan",
-    email: "staff@transactioniq.local",
-    password: "staff123",
-    role: "staff",
-    department: "Regional Sales",
-  },
-]
-
 export const emptyUploadDraft: UploadDraft = {
-  channel: "JazzCash",
+  channel: "Payment Receipt",
   receiptName: "",
   transactionId: "",
   date: "2026-07-04",

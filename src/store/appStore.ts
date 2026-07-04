@@ -12,6 +12,7 @@ import {
   fetchTransactions,
   loginWithScope,
   processUploadReceipt,
+  registerStaffUser,
   resetManagedUserPassword as resetManagedUserPasswordRequest,
   saveTransaction,
   signOut,
@@ -22,6 +23,7 @@ import type {
   DashboardSummary,
   LoginScope,
   ManagedUser,
+  RegisterUserPayload,
   Transaction,
   UploadDraft,
   UploadProcessingResult,
@@ -45,6 +47,7 @@ type AppState = {
   isAuthLoading: boolean
   isDataLoading: boolean
   login: (scope: LoginScope, email: string, password: string) => Promise<boolean>
+  register: (payload: RegisterUserPayload) => Promise<boolean>
   bootstrapSession: () => Promise<void>
   logout: () => Promise<void>
   loadTransactions: () => Promise<void>
@@ -108,6 +111,26 @@ export const useAppStore = create<AppState>()(
 
         try {
           const result = await loginWithScope(scope, email, password)
+          set({
+            token: result.token,
+            currentUser: result.user,
+            isAuthLoading: false,
+            loginError: null,
+          })
+          return true
+        } catch (error) {
+          set({
+            isAuthLoading: false,
+            loginError: toMessage(error),
+          })
+          return false
+        }
+      },
+      register: async (payload) => {
+        set({ isAuthLoading: true, loginError: null })
+
+        try {
+          const result = await registerStaffUser(payload)
           set({
             token: result.token,
             currentUser: result.user,

@@ -66,7 +66,7 @@ export default function Upload() {
   return (
     <AppShell
       title="Upload transaction"
-      subtitle="Upload a screenshot and let the backend automatically run OCR and duplicate validation before save."
+      subtitle="Upload a payment proof and let the backend automatically run extraction and duplicate validation before save."
     >
       <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <div className="space-y-6">
@@ -81,14 +81,14 @@ export default function Upload() {
                     <FileText className="h-6 w-6" />
                   </div>
                   <h2 className="mt-5 text-2xl font-semibold text-slate-950">
-                    Add payment screenshot
+                    Add payment proof
                   </h2>
                   <p className="mt-3 max-w-sm text-sm leading-6 text-slate-500">
-                    Screenshot upload hote hi backend automatically OCR aur duplicate
-                    check run karega.
+                    File upload hote hi backend automatically extraction aur duplicate
+                    validation run karega.
                   </p>
                   <label className="mt-6 inline-flex cursor-pointer items-center rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
-                    Choose screenshot
+                    Choose file
                     <input
                       type="file"
                       accept="image/*"
@@ -100,7 +100,7 @@ export default function Upload() {
                   {isProcessing ? (
                     <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm text-slate-600">
                       <LoaderCircle className="h-4 w-4 animate-spin" />
-                      Processing screenshot on backend...
+                      Processing upload on backend...
                     </div>
                   ) : null}
                 </div>
@@ -123,9 +123,11 @@ export default function Upload() {
                   disabled={isProcessing}
                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
                 >
-                  <option value="JazzCash">JazzCash</option>
-                  <option value="Easypaisa">Easypaisa</option>
+                  <option value="Payment Receipt">Payment Receipt</option>
+                  <option value="Invoice">Invoice</option>
                   <option value="Bank Transfer">Bank Transfer</option>
+                  <option value="Cash Deposit">Cash Deposit</option>
+                  <option value="Other">Other</option>
                 </select>
               </label>
 
@@ -263,8 +265,9 @@ export default function Upload() {
                 <span className="text-sm font-medium">Backend note</span>
               </div>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                Current phase FastAPI backend aur real API wiring ke saath chal rahi
-                hai. OCR abhi simulated processing use karti hai.
+                Extraction pipeline backend se wired hai. `EasyOCR` env flag on ho to
+                OCR use hoti hai; warna app hash-based fallback se duplicate control aur
+                auto-fill continuity maintain karti hai.
               </p>
             </div>
           </div>

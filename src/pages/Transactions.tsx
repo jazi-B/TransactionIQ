@@ -56,7 +56,7 @@ export default function Transactions() {
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-full border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
-              Live records: {visibleRows.length}
+              Visible records: {visibleRows.length}
             </div>
             <div className="rounded-full border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
               Role: {currentUser?.role}
