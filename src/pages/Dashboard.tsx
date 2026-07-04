@@ -127,7 +127,7 @@ export default function Dashboard() {
                     </p>
                   </div>
                   <p className="mt-2 text-sm text-slate-500">
-                    {item.channel} · {item.amount} · {item.uploaderName}
+                    {item.amount} · {item.uploaderName}
                   </p>
                 </div>
               )) ?? null}

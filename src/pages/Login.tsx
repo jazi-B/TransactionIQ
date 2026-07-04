@@ -50,7 +50,7 @@ export default function Login() {
               className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-100"
             >
               <ShieldCheck className="h-4 w-4 text-sky-300" />
-              TransactionIQ
+              Transaction IQ
             </Link>
 
             <p className="mt-8 text-xs uppercase tracking-[0.35em] text-slate-400 sm:mt-10">
@@ -153,7 +153,7 @@ export default function Login() {
                     value={name}
                     onChange={(event) => setName(event.target.value)}
                     className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
-                    placeholder="Muhammad Ali"
+                    placeholder="Enter full name"
                     required
                   />
                 </label>
@@ -167,7 +167,7 @@ export default function Login() {
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
-                  placeholder={scope === "admin" ? "admin@yourcompany.com" : "staff@yourcompany.com"}
+                  placeholder={scope === "admin" ? "admin@company.com" : "staff@company.com"}
                   required
                 />
               </label>

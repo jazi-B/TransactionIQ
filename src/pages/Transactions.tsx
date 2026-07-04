@@ -50,7 +50,7 @@ export default function Transactions() {
   return (
     <AppShell
       title="Transactions"
-      subtitle="Search and review submission history with operator ownership, receipt names, and export support."
+      subtitle="Search and review submission history with operator ownership, document names, and export support."
     >
       <section className="rounded-[28px] border border-slate-200 bg-white p-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -76,12 +76,11 @@ export default function Transactions() {
         </div>
 
         <div className="mt-6 hidden overflow-hidden rounded-[24px] border border-slate-200 lg:block">
-          <div className="grid grid-cols-[1.15fr_0.95fr_0.95fr_0.9fr_0.9fr_0.9fr_1fr] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-4 text-xs uppercase tracking-[0.28em] text-slate-500">
+          <div className="grid grid-cols-[1.15fr_1fr_0.9fr_1fr_0.9fr_1fr] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-4 text-xs uppercase tracking-[0.28em] text-slate-500">
             <span>Txn ID</span>
-            <span>Channel</span>
             <span>Uploader</span>
             <span>Date</span>
-            <span>Receipt</span>
+            <span>Document</span>
             <span>Amount</span>
             <span>Status</span>
           </div>
@@ -89,10 +88,9 @@ export default function Transactions() {
           {visibleRows.map((row) => (
             <div
               key={row.id}
-              className="grid grid-cols-[1.15fr_0.95fr_0.95fr_0.9fr_0.9fr_0.9fr_1fr] gap-3 border-b border-slate-200 px-4 py-5 text-sm text-slate-700 last:border-b-0"
+              className="grid grid-cols-[1.15fr_1fr_0.9fr_1fr_0.9fr_1fr] gap-3 border-b border-slate-200 px-4 py-5 text-sm text-slate-700 last:border-b-0"
             >
               <span className="font-medium text-slate-950">{row.transactionId}</span>
-              <span>{row.channel}</span>
               <span>{row.uploaderName}</span>
               <span>{row.date}</span>
               <span className="truncate">{row.receiptName}</span>
@@ -118,7 +116,7 @@ export default function Transactions() {
                     {row.transactionId}
                   </p>
                   <p className="mt-1 text-sm text-slate-500">
-                    {row.channel} · {row.amount}
+                    {row.amount}
                   </p>
                 </div>
                 <span
@@ -130,7 +128,7 @@ export default function Transactions() {
               <div className="mt-4 grid gap-2 text-sm text-slate-600">
                 <p>Uploader: {row.uploaderName}</p>
                 <p>Date: {row.date}</p>
-                <p>Receipt: {row.receiptName}</p>
+                <p>Document: {row.receiptName}</p>
               </div>
             </div>
           ))}

@@ -21,7 +21,9 @@ from .schemas import (
 from .security import verify_password
 
 config = get_config()
-app = FastAPI(title="TransactionIQ API", version="0.1.0")
+app = FastAPI(title="Transaction IQ API", version="0.1.0")
+MAX_UPLOAD_SIZE_BYTES = 8 * 1024 * 1024
+READ_CHUNK_SIZE_BYTES = 1024 * 1024
 
 app.add_middleware(
     CORSMiddleware,
@@ -35,6 +37,23 @@ app.add_middleware(
 @app.get("/api/health")
 def health_check() -> dict[str, str]:
     return {"status": "ok", "storage": repository.backend_name}
+
+
+async def read_upload_bytes(file: UploadFile) -> bytes:
+    chunks = bytearray()
+
+    while True:
+        chunk = await file.read(READ_CHUNK_SIZE_BYTES)
+        if not chunk:
+            break
+        chunks.extend(chunk)
+        if len(chunks) > MAX_UPLOAD_SIZE_BYTES:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail="File size exceeds the 8 MB upload limit.",
+            )
+
+    return bytes(chunks)
 
 
 def perform_login(payload: LoginRequest, expected_role: str) -> LoginResponse:
@@ -185,7 +204,7 @@ async def process_upload(
 ) -> UploadProcessResponse:
     del user
     file_name = file.filename or "uploaded-receipt.png"
-    file_bytes = await file.read()
+    file_bytes = await read_upload_bytes(file)
     draft, cached, source = repository.build_upload_draft(file_name, channel, file_bytes)
     duplicate = repository.find_duplicate(draft.transaction_id)
 
@@ -214,6 +233,11 @@ def create_transaction(
     payload: SaveTransactionRequest,
     user: dict = Depends(get_current_user),
 ) -> TransactionResponse:
+    if payload.transaction_id.strip().upper().startswith("OCR-"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Enter a verified reference ID before saving this transaction.",
+        )
     record = repository.create_transaction(user, payload)
     if not record:
         raise HTTPException(

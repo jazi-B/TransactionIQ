@@ -20,9 +20,11 @@ export default function Upload() {
 
   const [message, setMessage] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [uploadSucceeded, setUploadSucceeded] = useState(false)
 
   const fieldItems = [
-    { label: "Transaction ID", field: "transactionId" },
+    { label: "Reference ID", field: "transactionId" },
     { label: "Date", field: "date" },
     { label: "Time", field: "time" },
     { label: "Amount", field: "amount" },
@@ -31,36 +33,67 @@ export default function Upload() {
   ] as const
 
   const duplicateDetected = Boolean(lastDuplicateId)
+  const generatedReference = draft.transactionId.startsWith("OCR-")
 
   const handleFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
+    event.target.value = ""
     if (!file) {
       return
     }
 
     setIsProcessing(true)
-    setMessage("Uploading screenshot. Backend is running OCR and duplicate validation.")
+    setUploadSucceeded(false)
+    setMessage("Uploading file and extracting document details.")
 
-    const result = await processUpload(file)
+    try {
+      const result = await processUpload(file)
 
-    if ("duplicateId" in result) {
-      setMessage(result.message)
+      if (!result.ok) {
+        setMessage(result.message)
+        setUploadSucceeded(false)
+        return
+      }
+
+      const needsManualReview =
+        !result.draft.transactionId ||
+        result.draft.transactionId.startsWith("OCR-") ||
+        !result.draft.amount ||
+        !result.draft.sender ||
+        !result.draft.receiver
+      setMessage(
+        needsManualReview
+          ? "Upload processed. Review the extracted fields and replace any generated or missing values before saving."
+          : "Upload processed successfully. Review the extracted fields and save the transaction.",
+      )
+      setUploadSucceeded(true)
+    } finally {
       setIsProcessing(false)
-      return
     }
-
-    setMessage(result.message)
-    setIsProcessing(false)
   }
 
   const handleSave = async () => {
-    const result = await saveDraft()
-    if ("message" in result && !result.ok) {
-      setMessage(result.message)
-      return
-    }
+    setIsSaving(true)
+    try {
+      const result = await saveDraft()
+      if ("message" in result && !result.ok) {
+        setMessage(result.message)
+        return
+      }
 
-    setMessage(`Saved ${result.transaction.transactionId} successfully.`)
+      setMessage(`Transaction ${result.transaction.transactionId} saved successfully.`)
+      setUploadSucceeded(false)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleClearDraft = () => {
+    resetDraft()
+    setMessage(null)
+    setUploadSucceeded(false)
+    setIsProcessing(false)
+    setIsSaving(false)
   }
 
   return (
@@ -84,8 +117,8 @@ export default function Upload() {
                     Add payment proof
                   </h2>
                   <p className="mt-3 max-w-sm text-sm leading-6 text-slate-500">
-                    File upload hote hi backend automatically extraction aur duplicate
-                    validation run karega.
+                    Upload a receipt or invoice screenshot. The backend automatically
+                    extracts details and checks for duplicates.
                   </p>
                   <label className="mt-6 inline-flex cursor-pointer items-center rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
                     Choose file
@@ -110,30 +143,12 @@ export default function Upload() {
 
           <div className="rounded-[28px] border border-slate-200 bg-white p-5 sm:p-6">
             <p className="text-xs uppercase tracking-[0.35em] text-slate-400">
-              Submission controls
+              Document details
             </p>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <div className="mt-5 grid gap-4">
               <label className="block">
                 <span className="mb-2 block text-sm font-medium text-slate-700">
-                  Channel
-                </span>
-                <select
-                  value={draft.channel}
-                  onChange={(event) => updateDraft("channel", event.target.value)}
-                  disabled={isProcessing}
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
-                >
-                  <option value="Payment Receipt">Payment Receipt</option>
-                  <option value="Invoice">Invoice</option>
-                  <option value="Bank Transfer">Bank Transfer</option>
-                  <option value="Cash Deposit">Cash Deposit</option>
-                  <option value="Other">Other</option>
-                </select>
-              </label>
-
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-slate-700">
-                  Receipt name
+                  Uploaded file
                 </span>
                 <input
                   value={draft.receiptName}
@@ -142,6 +157,32 @@ export default function Upload() {
                   placeholder="Auto-filled after upload"
                 />
               </label>
+
+              <div
+                className={`rounded-[24px] border px-4 py-4 text-sm ${
+                  uploadSucceeded
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                    : "border-slate-200 bg-slate-50 text-slate-600"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  {uploadSucceeded ? (
+                    <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600" />
+                  ) : (
+                    <AlertCircle className="mt-0.5 h-5 w-5 text-slate-400" />
+                  )}
+                  <div>
+                    <p className="font-medium">
+                      {uploadSucceeded ? "Document processed" : "Awaiting upload"}
+                    </p>
+                    <p className="mt-2 leading-6">
+                      {uploadSucceeded
+                        ? "The file has been accepted and the extracted fields are ready for review."
+                        : "Upload a document to start OCR extraction and duplicate validation."}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -151,7 +192,7 @@ export default function Upload() {
               <div>
                 <p className="text-sm font-medium text-rose-800">Duplicate policy</p>
                 <p className="mt-2 text-sm leading-6 text-rose-700">
-                  Agar duplicate mile to frontend turant batata hai:
+                  If a duplicate is found, the system shows:
                   {" "}
                   {duplicateDetected
                     ? '"This transaction has already been submitted."'
@@ -169,7 +210,7 @@ export default function Upload() {
                 OCR review
               </p>
               <h2 className="mt-3 text-2xl font-semibold text-slate-950">
-                Extracted transaction fields
+                Extracted document fields
               </h2>
             </div>
             <div className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-medium text-slate-600">
@@ -213,6 +254,12 @@ export default function Upload() {
             </div>
           ) : null}
 
+          {generatedReference ? (
+            <div className="mt-4 rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-800">
+              OCR could not confirm a reliable reference ID. Enter the correct reference before saving.
+            </div>
+          ) : null}
+
           {message ? (
             <div className="mt-4 rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-700">
               {message}
@@ -227,20 +274,19 @@ export default function Upload() {
               }}
               disabled={
                 isProcessing ||
+                isSaving ||
                 !draft.receiptName ||
                 !draft.transactionId ||
+                generatedReference ||
                 duplicateDetected
               }
               className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
             >
-              Save transaction
+              {isSaving ? "Saving..." : "Save transaction"}
             </button>
             <button
               type="button"
-              onClick={() => {
-                resetDraft()
-                setMessage("Draft cleared.")
-              }}
+              onClick={handleClearDraft}
               disabled={isProcessing}
               className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-500 transition hover:bg-slate-50 hover:text-slate-700 disabled:cursor-not-allowed"
             >
@@ -255,8 +301,8 @@ export default function Upload() {
                 <span className="text-sm font-medium">Working interaction</span>
               </div>
               <p className="mt-2 text-sm leading-6 text-emerald-800">
-                Screenshot upload ke baad OCR aur duplicate validation automatic
-                chalti hai, phir fields auto-fill hoti hain.
+                The upload starts OCR and duplicate validation automatically, then
+                fills the editable fields for review.
               </p>
             </div>
             <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
@@ -265,9 +311,9 @@ export default function Upload() {
                 <span className="text-sm font-medium">Backend note</span>
               </div>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                Extraction pipeline backend se wired hai. `EasyOCR` env flag on ho to
-                OCR use hoti hai; warna app hash-based fallback se duplicate control aur
-                auto-fill continuity maintain karti hai.
+                OCR is connected on the backend. If a field cannot be read with
+                confidence, it remains editable so the operator can correct it
+                before saving.
               </p>
             </div>
           </div>

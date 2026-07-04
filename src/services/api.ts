@@ -319,11 +319,11 @@ export async function processUploadReceipt(
     notes: result.draft.notes,
   }
 
-  if (!result.ok && result.duplicate_id) {
+  if (!result.ok) {
     return {
       ok: false,
       draft,
-      duplicateId: result.duplicate_id,
+      duplicateId: result.duplicate_id ?? undefined,
       message: result.message,
     }
   }

@@ -19,7 +19,7 @@ export default function Home() {
             </div>
             <div>
               <p className="text-xs uppercase tracking-[0.35em] text-slate-400">
-                TransactionIQ
+                Transaction IQ
               </p>
               <p className="text-sm text-slate-500">Transaction controls platform</p>
             </div>
@@ -53,7 +53,7 @@ export default function Home() {
               Upload payment proofs, invoices, receipts, and transfer slips,
               extract transaction details, review the extracted fields, and
               block duplicate identifiers before they enter the record.
-              TransactionIQ is designed for finance operations handling
+              Transaction IQ is designed for finance operations handling
               high-volume staff submissions across multiple payment channels.
             </p>
 

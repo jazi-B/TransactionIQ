@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import { persist } from "zustand/middleware"
+import { createJSONStorage, persist } from "zustand/middleware"
 
 import { emptyUploadDraft } from "@/data/mock"
 import {
@@ -295,6 +295,12 @@ export const useAppStore = create<AppState>()(
             ...state.draft,
             [field]: value,
           },
+          lastDuplicateId:
+            field === "transactionId" &&
+            state.lastDuplicateId &&
+            value.trim().toLowerCase() !== state.lastDuplicateId.trim().toLowerCase()
+              ? null
+              : state.lastDuplicateId,
         })),
       replaceDraft: (draft) => set({ draft }),
       resetDraft: () => set({ draft: emptyUploadDraft, lastDuplicateId: null }),
@@ -305,17 +311,30 @@ export const useAppStore = create<AppState>()(
           return {
             ok: false,
             draft,
-            duplicateId: "",
+            duplicateId: undefined,
             message: "Authentication required.",
           }
         }
 
-        const result = await processUploadReceipt(token, file, draft.channel)
-        set({
-          draft: result.draft,
-          lastDuplicateId: "duplicateId" in result ? result.duplicateId : null,
-        })
-        return result
+        try {
+          const result = await processUploadReceipt(token, file, draft.channel)
+          let nextDuplicateId: string | null = null
+          if ("duplicateId" in result) {
+            nextDuplicateId = result.duplicateId ?? null
+          }
+          set({
+            draft: result.draft,
+            lastDuplicateId: nextDuplicateId,
+          })
+          return result
+        } catch (error) {
+          return {
+            ok: false,
+            draft,
+            duplicateId: undefined,
+            message: toMessage(error),
+          }
+        }
       },
       saveDraft: async () => {
         const token = get().token
@@ -332,7 +351,7 @@ export const useAppStore = create<AppState>()(
             transactions: [transaction, ...state.transactions],
             activities: pushActivity(
               state.activities,
-              `${currentUser.name} submitted ${transaction.transactionId} for ${transaction.channel}.`,
+              `${currentUser.name} submitted ${transaction.transactionId}.`,
               "success",
             ),
             draft: emptyUploadDraft,
@@ -358,7 +377,6 @@ export const useAppStore = create<AppState>()(
         const rows = get().transactions
         const header = [
           "Transaction ID",
-          "Channel",
           "Uploader",
           "Date",
           "Time",
@@ -369,7 +387,6 @@ export const useAppStore = create<AppState>()(
         const body = rows.map((entry) =>
           [
             entry.transactionId,
-            entry.channel,
             entry.uploaderName,
             entry.date,
             entry.time,
@@ -383,6 +400,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "transactioniq-session",
+      storage: createJSONStorage(() => sessionStorage),
       partialize: (state) => ({
         token: state.token,
         currentUser: state.currentUser,

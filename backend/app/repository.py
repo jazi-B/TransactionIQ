@@ -15,11 +15,18 @@ from .schemas import (
     UserResponse,
 )
 from .security import create_access_token, hash_password
-from .ocr import process_receipt
+from .ocr import current_date, current_time, process_receipt
 from .config import get_config
 
 
-TODAY = "2026-07-04"
+SUPPORTED_STORAGE_CHANNELS = {"JazzCash", "Easypaisa", "Bank Transfer"}
+
+
+def normalize_channel(channel: str) -> str:
+    candidate = channel.strip()
+    if candidate in SUPPORTED_STORAGE_CHANNELS:
+        return candidate
+    return "Bank Transfer"
 
 
 class InMemoryRepository:
@@ -251,10 +258,11 @@ class InMemoryRepository:
         if duplicate:
             return None
 
+        channel = normalize_channel(payload.channel)
         record = TransactionResponse(
             id=f"record-{len(self._transactions) + 1:03d}",
             transaction_id=payload.transaction_id.strip(),
-            channel=payload.channel,
+            channel=channel,
             uploader_id=user["id"],
             uploader_name=user["name"],
             date=payload.date,
@@ -271,7 +279,7 @@ class InMemoryRepository:
             0,
             ActivityResponse(
                 id=f"activity-{len(self._activities) + 1:03d}",
-                text=f"{user['name']} submitted {record.transaction_id} for {record.channel}.",
+                text=f"{user['name']} submitted {record.transaction_id}.",
                 tone="success",
                 created_at=datetime.utcnow().isoformat(),
             ),
@@ -293,7 +301,7 @@ class InMemoryRepository:
 
     def dashboard_summary(self) -> DashboardSummaryResponse:
         total_transactions = len(self._transactions)
-        todays_uploads = len([item for item in self._transactions if item.date == TODAY])
+        todays_uploads = len([item for item in self._transactions if item.date == current_date()])
         duplicates_blocked = len(
             [item for item in self._activities if "Duplicate blocked" in item.text]
         )
@@ -312,17 +320,18 @@ class InMemoryRepository:
     def build_upload_draft(
         self, file_name: str, channel: str, file_bytes: bytes
     ) -> tuple[UploadDraftResponse, bool, str]:
+        normalized_channel = normalize_channel(channel)
         extraction = process_receipt(file_bytes, file_name, channel)
         cached_draft = self._upload_cache.get(extraction.file_hash)
         if cached_draft:
             return deepcopy(cached_draft), True, "cache"
 
         draft = UploadDraftResponse(
-            channel=channel,
+            channel=normalized_channel,
             receipt_name=file_name,
             transaction_id=extraction.transaction_id,
-            date=extraction.date or TODAY,
-            time=extraction.time or "09:42 AM",
+            date=extraction.date or current_date(),
+            time=extraction.time or current_time(),
             amount=extraction.amount,
             sender=extraction.sender,
             receiver=extraction.receiver,

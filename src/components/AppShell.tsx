@@ -49,7 +49,7 @@ export default function AppShell({
             className="inline-flex items-center gap-3 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-100"
           >
             <ShieldCheck className="h-4 w-4 text-sky-600" />
-            TransactionIQ
+            Transaction IQ
           </NavLink>
 
           <div className="mt-6 rounded-[28px] border border-slate-200 bg-slate-950 p-5 text-white shadow-[0_24px_80px_rgba(15,23,42,0.12)]">
@@ -65,29 +65,29 @@ export default function AppShell({
             </p>
           </div>
 
-          <nav className="mt-6 flex gap-2 overflow-x-auto pb-1 lg:mt-8 lg:block lg:space-y-2">
+          <nav className="mt-6 grid grid-cols-2 gap-2 lg:mt-8 lg:block lg:space-y-2">
             {navigationItems.map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}
                 className={({ isActive }) =>
                   cn(
-                    "flex min-w-[150px] items-center justify-between rounded-2xl border px-4 py-3 text-sm transition lg:min-w-0",
+                    "flex min-w-0 items-center justify-start gap-3 rounded-2xl border px-4 py-3 text-sm transition lg:justify-between",
                     isActive
                       ? "border-slate-900 bg-slate-900 text-white shadow-[0_12px_32px_rgba(15,23,42,0.12)]"
                       : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900",
                   )
                 }
               >
-                <span className="inline-flex items-center gap-3">
+                <span className="inline-flex min-w-0 items-center gap-3">
                   {(() => {
                     const Icon = navIcons[item.label as keyof typeof navIcons] ?? UploadCloud
 
                     return <Icon className="h-4 w-4" />
                   })()}
-                  {item.label}
+                  <span className="truncate">{item.label}</span>
                 </span>
-                <span className="text-xs uppercase tracking-[0.24em] opacity-60">
+                <span className="hidden text-xs uppercase tracking-[0.24em] opacity-60 lg:inline">
                   Open
                 </span>
               </NavLink>
@@ -131,11 +131,11 @@ export default function AppShell({
                 </p>
               </div>
 
-              <div className="flex w-full items-center gap-4 self-start rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 sm:w-auto">
+              <div className="flex w-full min-w-0 items-center gap-4 self-start rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 sm:w-auto">
                 <div className="rounded-full bg-white p-2">
                   <Bell className="h-4 w-4 text-slate-700" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="font-medium text-slate-900">
                     {activities.length} recent activity items
                   </p>

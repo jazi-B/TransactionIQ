@@ -6,6 +6,18 @@ type AppNavigationItem = {
   roles?: UserRole[]
 }
 
+function getDefaultDate() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function getDefaultTime() {
+  return new Date().toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  })
+}
+
 export const heroMetrics = [
   { label: "Automated intake", value: "Always on", detail: "upload, extract, validate" },
   { label: "Operator review", value: "Editable", detail: "fix extracted fields before save" },
@@ -65,11 +77,11 @@ export const workflowSteps = [
 ]
 
 export const emptyUploadDraft: UploadDraft = {
-  channel: "Payment Receipt",
+  channel: "Bank Transfer",
   receiptName: "",
   transactionId: "",
-  date: "2026-07-04",
-  time: "09:42 AM",
+  date: getDefaultDate(),
+  time: getDefaultTime(),
   amount: "",
   sender: "",
   receiver: "",

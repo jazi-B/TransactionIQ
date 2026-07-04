@@ -7,7 +7,7 @@ from typing import Any
 from urllib import error, parse, request
 
 from .config import get_config
-from .ocr import process_receipt
+from .ocr import current_date, current_time, process_receipt
 from .schemas import (
     ActivityResponse,
     CreateUserRequest,
@@ -22,7 +22,14 @@ from .schemas import (
 from .security import create_access_token, hash_password
 
 
-TODAY = "2026-07-04"
+SUPPORTED_STORAGE_CHANNELS = {"JazzCash", "Easypaisa", "Bank Transfer"}
+
+
+def normalize_channel(channel: str) -> str:
+    candidate = channel.strip()
+    if candidate in SUPPORTED_STORAGE_CHANNELS:
+        return candidate
+    return "Bank Transfer"
 
 
 class SupabaseRepository:
@@ -361,9 +368,10 @@ class SupabaseRepository:
         return [self._map_transaction(row) for row in rows]
 
     def find_duplicate(self, transaction_id: str) -> TransactionResponse | None:
+        normalized_transaction_id = transaction_id.strip()
         rows = self._select(
             "transactions",
-            filters={"transaction_id": f"eq.{transaction_id.strip()}"},
+            filters={"transaction_id": f"eq.{normalized_transaction_id}"},
             limit=1,
         )
         return self._map_transaction(rows[0]) if rows else None
@@ -378,10 +386,11 @@ class SupabaseRepository:
             return None
 
         rows = self._select("transactions")
+        channel = normalize_channel(payload.channel)
         record = {
             "id": f"record-{len(rows) + 1:03d}",
             "transaction_id": payload.transaction_id.strip(),
-            "channel": payload.channel,
+            "channel": channel,
             "uploader_id": user["id"],
             "uploader_name": user["name"],
             "date": payload.date,
@@ -398,7 +407,7 @@ class SupabaseRepository:
             "activity_logs",
             {
                 "id": f"activity-{int(datetime.utcnow().timestamp() * 1000)}",
-                "text": f"{user['name']} submitted {record['transaction_id']} for {record['channel']}.",
+                "text": f"{user['name']} submitted {record['transaction_id']}.",
                 "tone": "success",
                 "created_at": datetime.utcnow().isoformat(),
             },
@@ -420,7 +429,7 @@ class SupabaseRepository:
         transactions = self._select("transactions", order="created_at.desc")
         activities = self._select("activity_logs", order="created_at.desc")
         total_transactions = len(transactions)
-        todays_uploads = len([item for item in transactions if item["date"] == TODAY])
+        todays_uploads = len([item for item in transactions if item["date"] == current_date()])
         duplicates_blocked = len(
             [item for item in activities if "Duplicate blocked" in item["text"]]
         )
@@ -437,6 +446,7 @@ class SupabaseRepository:
     def build_upload_draft(
         self, file_name: str, channel: str, file_bytes: bytes
     ) -> tuple[UploadDraftResponse, bool, str]:
+        normalized_channel = normalize_channel(channel)
         extraction = process_receipt(file_bytes, file_name, channel)
         cached_draft = self._upload_cache.get(extraction.file_hash)
         if cached_draft:
@@ -464,11 +474,11 @@ class SupabaseRepository:
             return draft, True, "cache"
 
         draft = UploadDraftResponse(
-            channel=channel,
+            channel=normalized_channel,
             receipt_name=file_name,
             transaction_id=extraction.transaction_id,
-            date=extraction.date or TODAY,
-            time=extraction.time or "09:42 AM",
+            date=extraction.date or current_date(),
+            time=extraction.time or current_time(),
             amount=extraction.amount,
             sender=extraction.sender,
             receiver=extraction.receiver,

@@ -86,7 +86,7 @@ export type UploadProcessingResult =
   | {
       ok: false
       draft: UploadDraft
-      duplicateId: string
+      duplicateId?: string
       message: string
     }
 
