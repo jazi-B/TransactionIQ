@@ -360,3 +360,14 @@ export async function saveTransaction(
 
   return mapTransaction(result)
 }
+
+export async function deleteTransaction(
+  token: string,
+  transactionId: string,
+): Promise<{ ok: boolean }> {
+  await request<{ status: string }>(`/transactions/${transactionId}`, {
+    method: "DELETE",
+    token,
+  })
+  return { ok: true }
+}

@@ -17,10 +17,22 @@ export default function Users() {
   const [message, setMessage] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [resetDrafts, setResetDrafts] = useState<Record<string, string>>({})
+  const [searchQuery, setSearchQuery] = useState("")
 
   useEffect(() => {
     void loadManagedUsers()
   }, [loadManagedUsers])
+
+  const filteredUsers = managedUsers.filter((user) => {
+    const q = searchQuery.toLowerCase().trim()
+    if (!q) return true
+    return (
+      user.name.toLowerCase().includes(q) ||
+      user.email.toLowerCase().includes(q) ||
+      user.role.toLowerCase().includes(q) ||
+      user.department.toLowerCase().includes(q)
+    )
+  })
 
   const activeUsers = managedUsers.filter((user) => user.isActive)
   const inactiveUsers = managedUsers.filter((user) => !user.isActive)
@@ -150,7 +162,7 @@ export default function Users() {
         </div>
 
         <div className="rounded-[28px] border border-slate-200 bg-white p-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 border-b border-slate-100 pb-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.35em] text-slate-500">
                 User registry
@@ -164,8 +176,18 @@ export default function Users() {
             </div>
           </div>
 
+          <div className="mt-5">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
+              placeholder="Search users by name, email, department or role..."
+            />
+          </div>
+
           <div className="mt-6 space-y-4">
-            {managedUsers.map((user) => (
+            {filteredUsers.map((user) => (
               <div
                 key={user.id}
                 className="rounded-[24px] border border-slate-200 bg-slate-50 p-5"
@@ -240,9 +262,9 @@ export default function Users() {
               </div>
             ))}
 
-            {!managedUsers.length && !isDataLoading ? (
+            {!filteredUsers.length && !isDataLoading ? (
               <div className="rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-                No managed users found yet.
+                {searchQuery.trim() ? "No users match your search query." : "No managed users found yet."}
               </div>
             ) : null}
           </div>

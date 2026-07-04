@@ -131,7 +131,8 @@ class SupabaseRepository:
         return result if isinstance(result, list) else []
 
     def _remove_placeholder_seed_data(self) -> None:
-        self._delete("transactions", {"id": "in.(record-001,record-002,record-003)"})
+        # Prevent automatic deletion of real transaction records on startup
+        # self._delete("transactions", {"id": "in.(record-001,record-002,record-003)"})
         self._delete("activity_logs", {"id": "in.(activity-001,activity-002,activity-003)"})
         self._delete("app_users", {"id": "eq.user-staff-01", "email": "eq.staff@transactioniq.local"})
 
@@ -385,10 +386,10 @@ class SupabaseRepository:
         if duplicate:
             return None
 
-        rows = self._select("transactions")
+        import uuid
         channel = normalize_channel(payload.channel)
         record = {
-            "id": f"record-{len(rows) + 1:03d}",
+            "id": f"record-{int(datetime.utcnow().timestamp() * 1000)}-{uuid.uuid4().hex[:6]}",
             "transaction_id": payload.transaction_id.strip(),
             "channel": channel,
             "uploader_id": user["id"],
@@ -442,6 +443,30 @@ class SupabaseRepository:
             activities=[self._map_activity(item) for item in activities[:6]],
             recent_transactions=[self._map_transaction(item) for item in transactions[:4]],
         )
+
+    def delete_transaction(self, transaction_id: str) -> bool:
+        # Search by database id or transaction_id
+        rows = self._select("transactions", filters={"id": f"eq.{transaction_id}"}, limit=1)
+        if not rows:
+            rows = self._select("transactions", filters={"transaction_id": f"eq.{transaction_id}"}, limit=1)
+        if not rows:
+            return False
+
+        real_id = rows[0]["id"]
+        txn_id = rows[0]["transaction_id"]
+        self._delete("transactions", {"id": f"eq.{real_id}"})
+
+        # Log activity
+        self._insert(
+            "activity_logs",
+            {
+                "id": f"activity-{int(datetime.utcnow().timestamp() * 1000)}",
+                "text": f"Finance Admin deleted transaction {txn_id}.",
+                "tone": "warning",
+                "created_at": datetime.utcnow().isoformat(),
+            },
+        )
+        return True
 
     def build_upload_draft(
         self, file_name: str, channel: str, file_bytes: bytes

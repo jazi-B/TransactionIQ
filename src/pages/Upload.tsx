@@ -66,6 +66,7 @@ export default function Upload() {
   const saveDraft = useAppStore((state) => state.saveDraft)
   const lastDuplicateId = useAppStore((state) => state.lastDuplicateId)
   const resetDraft = useAppStore((state) => state.resetDraft)
+  const currentUser = useAppStore((state) => state.currentUser)
 
   const [message, setMessage] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -288,7 +289,7 @@ export default function Upload() {
                 <input
                   value={draft[item.field]}
                   onChange={(event) => updateDraft(item.field, event.target.value)}
-                  disabled={isProcessing}
+                  disabled={isProcessing || (item.field === "transactionId" && currentUser?.role === "staff")}
                   className="w-full border-none bg-transparent p-0 text-lg font-medium text-slate-950 outline-none placeholder:text-slate-300 disabled:text-slate-500"
                   placeholder={`Enter ${item.label.toLowerCase()}`}
                 />

@@ -245,3 +245,18 @@ def create_transaction(
             detail="This transaction has already been submitted.",
         )
     return record
+
+
+@app.delete("/api/transactions/{transaction_id}")
+def delete_transaction(
+    transaction_id: str,
+    user: dict = Depends(require_admin),
+) -> dict[str, str]:
+    del user
+    success = repository.delete_transaction(transaction_id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Transaction not found.",
+        )
+    return {"status": "deleted"}

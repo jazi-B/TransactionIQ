@@ -258,9 +258,10 @@ class InMemoryRepository:
         if duplicate:
             return None
 
+        import uuid
         channel = normalize_channel(payload.channel)
         record = TransactionResponse(
-            id=f"record-{len(self._transactions) + 1:03d}",
+            id=f"record-{int(datetime.utcnow().timestamp() * 1000)}-{uuid.uuid4().hex[:6]}",
             transaction_id=payload.transaction_id.strip(),
             channel=channel,
             uploader_id=user["id"],
@@ -316,6 +317,23 @@ class InMemoryRepository:
             activities=deepcopy(self._activities[:6]),
             recent_transactions=deepcopy(self._transactions[:4]),
         )
+
+    def delete_transaction(self, transaction_id: str) -> bool:
+        for idx, item in enumerate(self._transactions):
+            if item.id == transaction_id or item.transaction_id == transaction_id:
+                self._transactions.pop(idx)
+                self._activities.insert(
+                    0,
+                    ActivityResponse(
+                        id=f"activity-{len(self._activities) + 1:03d}",
+                        text=f"Finance Admin deleted transaction {transaction_id}.",
+                        tone="warning",
+                        created_at=datetime.utcnow().isoformat(),
+                    ),
+                )
+                self._activities = self._activities[:12]
+                return True
+        return False
 
     def build_upload_draft(
         self, file_name: str, channel: str, file_bytes: bytes

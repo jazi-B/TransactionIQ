@@ -33,6 +33,7 @@ class AppConfig:
     supabase_jwks_url: str
     admin_bootstrap_password: str
     cors_allowed_origins: tuple[str, ...]
+    ocr_space_api_key: str
 
     @property
     def supabase_enabled(self) -> bool:
@@ -69,4 +70,5 @@ def get_config() -> AppConfig:
         supabase_jwks_url=os.getenv("SUPABASE_JWKS_URL", "").strip().strip("`"),
         admin_bootstrap_password=os.getenv("ADMIN_BOOTSTRAP_PASSWORD", "admin123").strip(),
         cors_allowed_origins=parse_origins(cors_origins),
+        ocr_space_api_key=os.getenv("OCR_SPACE_API_KEY", "").strip(),
     )

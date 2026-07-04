@@ -2,6 +2,7 @@ import { useEffect } from "react"
 
 import AppShell from "@/components/AppShell"
 import { useAppStore } from "@/store/appStore"
+import { isSuspiciousTransaction } from "@/utils/suspicious"
 
 function getStatusClasses(status: string) {
   if (status === "approved") {
@@ -24,6 +25,7 @@ export default function Transactions() {
   const currentUser = useAppStore((state) => state.currentUser)
   const exportCsv = useAppStore((state) => state.exportCsv)
   const loadTransactions = useAppStore((state) => state.loadTransactions)
+  const deleteTransaction = useAppStore((state) => state.deleteTransaction)
   const isDataLoading = useAppStore((state) => state.isDataLoading)
 
   useEffect(() => {
@@ -34,6 +36,19 @@ export default function Transactions() {
     currentUser?.role === "admin"
       ? transactions
       : transactions.filter((row) => row.uploaderId === currentUser?.id)
+
+  const gridClasses = currentUser?.role === "admin"
+    ? "grid grid-cols-[1.15fr_1.1fr_0.9fr_1fr_0.9fr_1fr_0.45fr] gap-3 items-center"
+    : "grid grid-cols-[1.15fr_1fr_0.9fr_1fr_0.9fr_1fr] gap-3 items-center"
+
+  const handleDelete = async (transactionId: string) => {
+    if (window.confirm("Are you sure you want to delete this transaction? This action is permanent and cannot be undone.")) {
+      const result = await deleteTransaction(transactionId)
+      if (!result.ok) {
+        alert(result.message)
+      }
+    }
+  }
 
   const handleExport = () => {
     const csv = exportCsv()
@@ -76,21 +91,29 @@ export default function Transactions() {
         </div>
 
         <div className="mt-6 hidden overflow-hidden rounded-[24px] border border-slate-200 lg:block">
-          <div className="grid grid-cols-[1.15fr_1fr_0.9fr_1fr_0.9fr_1fr] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-4 text-xs uppercase tracking-[0.28em] text-slate-500">
+          <div className={`${gridClasses} border-b border-slate-200 bg-slate-50 px-4 py-4 text-xs uppercase tracking-[0.28em] text-slate-500`}>
             <span>Txn ID</span>
             <span>Uploader</span>
             <span>Date</span>
             <span>Document</span>
             <span>Amount</span>
             <span>Status</span>
+            {currentUser?.role === "admin" && <span>Action</span>}
           </div>
 
           {visibleRows.map((row) => (
             <div
               key={row.id}
-              className="grid grid-cols-[1.15fr_1fr_0.9fr_1fr_0.9fr_1fr] gap-3 border-b border-slate-200 px-4 py-5 text-sm text-slate-700 last:border-b-0"
+              className={`${gridClasses} border-b border-slate-200 px-4 py-5 text-sm text-slate-700 last:border-b-0`}
             >
-              <span className="font-medium text-slate-950">{row.transactionId}</span>
+              <span className="font-medium text-slate-950 flex items-center">
+                {row.transactionId}
+                {currentUser?.role === "admin" && isSuspiciousTransaction(row.date) && (
+                  <span className="ml-2 rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-rose-700">
+                    Suspicious
+                  </span>
+                )}
+              </span>
               <span>{row.uploaderName}</span>
               <span>{row.date}</span>
               <span className="truncate">{row.receiptName}</span>
@@ -100,6 +123,15 @@ export default function Transactions() {
               >
                 {formatStatus(row.status)}
               </span>
+              {currentUser?.role === "admin" && (
+                <button
+                  type="button"
+                  onClick={() => void handleDelete(row.id)}
+                  className="text-rose-600 hover:text-rose-900 transition font-medium"
+                >
+                  Delete
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -112,8 +144,13 @@ export default function Transactions() {
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-slate-950">
+                  <p className="text-sm font-semibold text-slate-950 flex items-center">
                     {row.transactionId}
+                    {currentUser?.role === "admin" && isSuspiciousTransaction(row.date) && (
+                      <span className="ml-2 rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-rose-700">
+                        Suspicious
+                      </span>
+                    )}
                   </p>
                   <p className="mt-1 text-sm text-slate-500">
                     {row.amount}
@@ -130,6 +167,17 @@ export default function Transactions() {
                 <p>Date: {row.date}</p>
                 <p>Document: {row.receiptName}</p>
               </div>
+              {currentUser?.role === "admin" && (
+                <div className="mt-4 border-t border-slate-200 pt-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => void handleDelete(row.id)}
+                    className="text-sm font-semibold text-rose-600 hover:text-rose-800 transition"
+                  >
+                    Delete Transaction
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>

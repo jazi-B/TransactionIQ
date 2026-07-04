@@ -108,10 +108,80 @@ def process_receipt(file_bytes: bytes, file_name: str, channel: str) -> OcrExtra
 
 
 def extract_text(file_bytes: bytes) -> tuple[str, str]:
+    text = extract_text_with_ocr_space(file_bytes)
+    if text:
+        return text, "ocr-space"
+
     text = extract_text_with_rapidocr(file_bytes)
     if text:
         return text, "rapidocr"
     return "", "hash-fallback"
+
+
+def extract_text_with_ocr_space(file_bytes: bytes) -> str:
+    from .config import get_config
+    config = get_config()
+    api_key = config.ocr_space_api_key
+    if not api_key:
+        return ""
+
+    import json
+    import urllib.request
+    import uuid
+
+    boundary = f"Boundary-{uuid.uuid4().hex}"
+    body = bytearray()
+
+    # apikey field
+    body.extend(f"--{boundary}\r\n".encode())
+    body.extend(b'Content-Disposition: form-data; name="apikey"\r\n\r\n')
+    body.extend(f"{api_key}\r\n".encode())
+
+    # language field
+    body.extend(f"--{boundary}\r\n".encode())
+    body.extend(b'Content-Disposition: form-data; name="language"\r\n\r\n')
+    body.extend(b"eng\r\n")
+
+    # isOverlayRequired field
+    body.extend(f"--{boundary}\r\n".encode())
+    body.extend(b'Content-Disposition: form-data; name="isOverlayRequired"\r\n\r\n')
+    body.extend(b"false\r\n")
+
+    # file field
+    body.extend(f"--{boundary}\r\n".encode())
+    body.extend(b'Content-Disposition: form-data; name="file"; filename="receipt.jpg"\r\n')
+    body.extend(b"Content-Type: image/jpeg\r\n\r\n")
+    body.extend(file_bytes)
+    body.extend(b"\r\n")
+
+    # end boundary
+    body.extend(f"--{boundary}--\r\n".encode())
+
+    url = "https://api.ocr.space/parse/image"
+    req = urllib.request.Request(
+        url,
+        data=bytes(body),
+        headers={
+            "Content-Type": f"multipart/form-data; boundary={boundary}",
+            "User-Agent": "Mozilla/5.0",
+        },
+        method="POST"
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=20) as response:
+            res_bytes = response.read()
+            data = json.loads(res_bytes.decode("utf-8"))
+            parsed_results = data.get("ParsedResults")
+            if parsed_results and len(parsed_results) > 0:
+                parsed_text = parsed_results[0].get("ParsedText")
+                if isinstance(parsed_text, str):
+                    return parsed_text
+    except Exception as e:
+        import sys
+        print(f"OCR.space API request failed: {e}", file=sys.stderr)
+
+    return ""
 
 
 def extract_text_with_rapidocr(file_bytes: bytes) -> str:

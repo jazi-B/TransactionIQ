@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react"
 
 import AppShell from "@/components/AppShell"
 import { useAppStore } from "@/store/appStore"
+import { isSuspiciousTransaction } from "@/utils/suspicious"
 
 function formatStatus(status: string) {
   return status.replace("_", " ")
@@ -157,8 +158,13 @@ export default function Dashboard() {
                   className="rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-4"
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-medium text-slate-900">
+                    <p className="text-sm font-medium text-slate-900 flex items-center">
                       {item.transactionId}
+                      {currentUser?.role === "admin" && isSuspiciousTransaction(item.date) && (
+                        <span className="ml-2 rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-rose-700">
+                          Suspicious
+                        </span>
+                      )}
                     </p>
                     <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
                       {formatStatus(item.status)}
