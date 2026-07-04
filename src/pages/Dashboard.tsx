@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useEffect, useMemo } from "react"
 
 import AppShell from "@/components/AppShell"
 import { useAppStore } from "@/store/appStore"
@@ -41,6 +41,37 @@ export default function Dashboard() {
     },
   ]
   const recentTransactions = (dashboardSummary?.recentTransactions ?? []).slice(0, 3)
+  const trendBuckets = useMemo(() => {
+    const formatter = new Intl.DateTimeFormat("en-US", { weekday: "short" })
+    const now = new Date()
+    const days = Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(now)
+      date.setHours(0, 0, 0, 0)
+      date.setDate(now.getDate() - (6 - index))
+      const key = date.toISOString().slice(0, 10)
+      return {
+        key,
+        label: formatter.format(date),
+        count: 0,
+      }
+    })
+
+    for (const transaction of dashboardSummary?.recentTransactions ?? []) {
+      const createdAt = transaction.createdAt.slice(0, 10)
+      const bucket = days.find((item) => item.key === createdAt)
+      if (bucket) {
+        bucket.count += 1
+      }
+    }
+
+    const maxCount = Math.max(...days.map((item) => item.count), 0)
+
+    return days.map((item) => ({
+      ...item,
+      height: maxCount > 0 ? Math.max(18, Math.round((item.count / maxCount) * 100)) : 0,
+    }))
+  }, [dashboardSummary?.recentTransactions])
+  const hasTrendData = trendBuckets.some((item) => item.count > 0)
 
   return (
     <AppShell
@@ -70,27 +101,34 @@ export default function Dashboard() {
                 Processing trend
               </p>
               <h2 className="mt-3 text-2xl font-semibold text-slate-950">
-                Submission distribution
+                Submission activity
               </h2>
             </div>
             <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
-              Current snapshot
+              Last 7 days
             </div>
           </div>
 
-          <div className="mt-8 grid h-[240px] grid-cols-7 items-end gap-2 sm:h-[320px] sm:gap-3">
-            {[46, 72, 54, 89, 63, 104, 81].map((height, index) => (
-              <div key={height} className="flex h-full flex-col justify-end gap-3">
-                <div
-                  className="rounded-t-[20px] bg-[linear-gradient(180deg,#0f172a,#94a3b8)]"
-                  style={{ height: `${height}%` }}
-                />
-                <p className="text-center text-xs text-slate-400">
-                  D{index + 1}
-                </p>
-              </div>
-            ))}
-          </div>
+          {hasTrendData ? (
+            <div className="mt-8 grid h-[240px] grid-cols-7 items-end gap-2 sm:h-[320px] sm:gap-3">
+              {trendBuckets.map((item) => (
+                <div key={item.key} className="flex h-full flex-col justify-end gap-3">
+                  <div
+                    className="rounded-t-[20px] bg-[linear-gradient(180deg,#0f172a,#94a3b8)]"
+                    style={{ height: `${item.height}%` }}
+                    title={`${item.count} submission${item.count === 1 ? "" : "s"}`}
+                  />
+                  <p className="text-center text-xs text-slate-400">
+                    {item.label}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-8 rounded-[24px] border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
+              Activity bars appear automatically as new submissions are saved.
+            </div>
+          )}
         </div>
 
         <div className="space-y-6">

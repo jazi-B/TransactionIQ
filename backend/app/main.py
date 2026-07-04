@@ -22,7 +22,7 @@ from .security import verify_password
 
 config = get_config()
 app = FastAPI(title="Transaction IQ API", version="0.1.0")
-MAX_UPLOAD_SIZE_BYTES = 8 * 1024 * 1024
+MAX_UPLOAD_SIZE_BYTES = 12 * 1024 * 1024
 READ_CHUNK_SIZE_BYTES = 1024 * 1024
 
 app.add_middleware(
@@ -50,7 +50,7 @@ async def read_upload_bytes(file: UploadFile) -> bytes:
         if len(chunks) > MAX_UPLOAD_SIZE_BYTES:
             raise HTTPException(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail="File size exceeds the 8 MB upload limit.",
+                detail="File size exceeds the 12 MB upload limit.",
             )
 
     return bytes(chunks)

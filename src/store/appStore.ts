@@ -89,6 +89,9 @@ function toMessage(error: unknown) {
   if (error instanceof ApiError) {
     return error.message
   }
+  if (error instanceof TypeError) {
+    return "Upload failed. Check your connection and try a smaller PNG or JPG screenshot."
+  }
   return "Something went wrong. Please try again."
 }
 

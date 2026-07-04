@@ -10,6 +10,55 @@ import {
 import AppShell from "@/components/AppShell"
 import { useAppStore } from "@/store/appStore"
 
+const SUPPORTED_UPLOAD_TYPES = new Set(["image/jpeg", "image/png", "image/webp"])
+const MOBILE_OPTIMIZATION_THRESHOLD_BYTES = 3 * 1024 * 1024
+const MAX_IMAGE_DIMENSION = 2200
+
+async function optimizeImageForUpload(file: File) {
+  if (!SUPPORTED_UPLOAD_TYPES.has(file.type) || file.size <= MOBILE_OPTIMIZATION_THRESHOLD_BYTES) {
+    return file
+  }
+
+  const objectUrl = URL.createObjectURL(file)
+
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const nextImage = new Image()
+      nextImage.onload = () => resolve(nextImage)
+      nextImage.onerror = () => reject(new Error("Image load failed."))
+      nextImage.src = objectUrl
+    })
+
+    const scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(image.width, image.height))
+    const canvas = document.createElement("canvas")
+    canvas.width = Math.max(1, Math.round(image.width * scale))
+    canvas.height = Math.max(1, Math.round(image.height * scale))
+
+    const context = canvas.getContext("2d")
+    if (!context) {
+      return file
+    }
+
+    context.drawImage(image, 0, 0, canvas.width, canvas.height)
+
+    const optimizedBlob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, "image/jpeg", 0.82)
+    })
+
+    if (!optimizedBlob || optimizedBlob.size >= file.size) {
+      return file
+    }
+
+    const normalizedName = file.name.replace(/\.[^.]+$/, "") || "upload"
+    return new File([optimizedBlob], `${normalizedName}.jpg`, {
+      type: "image/jpeg",
+      lastModified: Date.now(),
+    })
+  } finally {
+    URL.revokeObjectURL(objectUrl)
+  }
+}
+
 export default function Upload() {
   const draft = useAppStore((state) => state.draft)
   const updateDraft = useAppStore((state) => state.updateDraft)
@@ -42,12 +91,23 @@ export default function Upload() {
       return
     }
 
+    if (!SUPPORTED_UPLOAD_TYPES.has(file.type)) {
+      setMessage("Please upload a PNG, JPG, or WEBP screenshot.")
+      setUploadSucceeded(false)
+      return
+    }
+
     setIsProcessing(true)
     setUploadSucceeded(false)
     setMessage("Uploading file and extracting document details.")
 
     try {
-      const result = await processUpload(file)
+      const uploadFile = await optimizeImageForUpload(file)
+      if (uploadFile !== file) {
+        setMessage("Large image detected. Optimizing the screenshot for a more reliable mobile upload.")
+      }
+
+      const result = await processUpload(uploadFile)
 
       if (!result.ok) {
         setMessage(result.message)
@@ -124,7 +184,7 @@ export default function Upload() {
                     Choose file
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/png,image/jpeg,image/webp"
                       className="hidden"
                       onChange={handleFile}
                     />
