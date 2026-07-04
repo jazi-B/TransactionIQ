@@ -11,8 +11,8 @@ import AppShell from "@/components/AppShell"
 import { useAppStore } from "@/store/appStore"
 
 const SUPPORTED_UPLOAD_TYPES = new Set(["image/jpeg", "image/png", "image/webp"])
-const MOBILE_OPTIMIZATION_THRESHOLD_BYTES = 3 * 1024 * 1024
-const MAX_IMAGE_DIMENSION = 2200
+const MOBILE_OPTIMIZATION_THRESHOLD_BYTES = 500 * 1024
+const MAX_IMAGE_DIMENSION = 1200
 
 async function optimizeImageForUpload(file: File) {
   if (!SUPPORTED_UPLOAD_TYPES.has(file.type) || file.size <= MOBILE_OPTIMIZATION_THRESHOLD_BYTES) {
