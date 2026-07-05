@@ -238,6 +238,11 @@ def create_transaction(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Enter a verified reference ID before saving this transaction.",
         )
+    if not payload.sender.strip():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Enter a sender name before saving this transaction.",
+        )
     record = repository.create_transaction(user, payload)
     if not record:
         raise HTTPException(

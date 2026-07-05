@@ -321,6 +321,12 @@ export default function Upload() {
             </div>
           ) : null}
 
+          {draft.receiptName && !draft.sender?.trim() ? (
+            <div className="mt-4 rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-800">
+              Please enter the sender name in the field.
+            </div>
+          ) : null}
+
           {message ? (
             <div className="mt-4 rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-700">
               {message}
@@ -338,6 +344,7 @@ export default function Upload() {
                 isSaving ||
                 !draft.receiptName ||
                 !draft.transactionId ||
+                !draft.sender?.trim() ||
                 generatedReference ||
                 duplicateDetected
               }

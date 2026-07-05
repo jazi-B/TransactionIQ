@@ -171,7 +171,7 @@ export default function Dashboard() {
                     </p>
                   </div>
                   <p className="mt-2 text-sm text-slate-500">
-                    {item.amount} · {item.uploaderName}
+                    {item.amount} · {item.sender || "-"} · {item.uploaderName}
                   </p>
                 </div>
               )) ?? null}

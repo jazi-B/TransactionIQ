@@ -406,6 +406,7 @@ export const useAppStore = create<AppState>()(
         const rows = get().transactions
         const header = [
           "Transaction ID",
+          "Sender",
           "Uploader",
           "Date",
           "Time",
@@ -416,6 +417,7 @@ export const useAppStore = create<AppState>()(
         const body = rows.map((entry) =>
           [
             entry.transactionId,
+            entry.sender || "-",
             entry.uploaderName,
             entry.date,
             entry.time,

@@ -38,8 +38,8 @@ export default function Transactions() {
       : transactions.filter((row) => row.uploaderId === currentUser?.id)
 
   const gridClasses = currentUser?.role === "admin"
-    ? "grid grid-cols-[1.15fr_1.1fr_0.9fr_1fr_0.9fr_1fr_0.45fr] gap-3 items-center"
-    : "grid grid-cols-[1.15fr_1fr_0.9fr_1fr_0.9fr_1fr] gap-3 items-center"
+    ? "grid grid-cols-[1.15fr_1fr_1.1fr_0.9fr_1fr_0.9fr_1fr_0.45fr] gap-3 items-center"
+    : "grid grid-cols-[1.15fr_1fr_1fr_0.9fr_1fr_0.9fr_1fr] gap-3 items-center"
 
   const handleDelete = async (transactionId: string) => {
     if (window.confirm("Are you sure you want to delete this transaction? This action is permanent and cannot be undone.")) {
@@ -93,6 +93,7 @@ export default function Transactions() {
         <div className="mt-6 hidden overflow-hidden rounded-[24px] border border-slate-200 lg:block">
           <div className={`${gridClasses} border-b border-slate-200 bg-slate-50 px-4 py-4 text-xs uppercase tracking-[0.28em] text-slate-500`}>
             <span>Txn ID</span>
+            <span>Sender</span>
             <span>Uploader</span>
             <span>Date</span>
             <span>Document</span>
@@ -114,6 +115,7 @@ export default function Transactions() {
                   </span>
                 )}
               </span>
+              <span className="truncate" title={row.sender}>{row.sender || "-"}</span>
               <span>{row.uploaderName}</span>
               <span>{row.date}</span>
               <span className="truncate">{row.receiptName}</span>
@@ -163,6 +165,7 @@ export default function Transactions() {
                 </span>
               </div>
               <div className="mt-4 grid gap-2 text-sm text-slate-600">
+                <p>Sender: {row.sender || "-"}</p>
                 <p>Uploader: {row.uploaderName}</p>
                 <p>Date: {row.date}</p>
                 <p>Document: {row.receiptName}</p>

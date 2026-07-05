@@ -43,10 +43,10 @@ DATE_PATTERNS = [
 TIME_PATTERN = re.compile(r"\b(\d{1,2}:\d{2}(?::\d{2})?\s?(?:AM|PM)?)\b", re.IGNORECASE)
 PARTY_PATTERNS = {
     "sender": [
-        re.compile(r"(?:sender|from|paid by|payer|customer|account holder)\s*[:.\-]\s*(.+)", re.IGNORECASE),
+        re.compile(r"(?:sender\s*name|sender|from|paid\s*by|payer\s*name|payer|customer\s*name|customer|account\s*holder)\s*[:.\-]\s*(.+)", re.IGNORECASE),
     ],
     "receiver": [
-        re.compile(r"(?:receiver|to|paid to|payee|merchant|beneficiary)\s*[:.\-]\s*(.+)", re.IGNORECASE),
+        re.compile(r"(?:receiver\s*name|receiver|to|paid\s*to|payee\s*name|payee|merchant\s*name|merchant|beneficiary\s*name|beneficiary)\s*[:.\-]\s*(.+)", re.IGNORECASE),
     ],
 }
 
