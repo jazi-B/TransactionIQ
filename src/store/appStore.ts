@@ -406,27 +406,40 @@ export const useAppStore = create<AppState>()(
         const rows = get().transactions
         const header = [
           "Transaction ID",
-          "Sender",
+          "Channel",
           "Uploader",
           "Date",
           "Time",
           "Amount",
+          "Sender",
+          "Receiver",
           "Status",
+          "Document Name"
         ]
+
+        const escapeCsvField = (val: string) => {
+          const stringified = String(val ?? "")
+          const escaped = stringified.replace(/"/g, '""')
+          return `"${escaped}"`
+        }
 
         const body = rows.map((entry) =>
           [
-            entry.transactionId,
-            entry.sender || "-",
-            entry.uploaderName,
-            entry.date,
-            entry.time,
-            entry.amount,
-            entry.status,
+            escapeCsvField(entry.transactionId),
+            escapeCsvField(entry.channel),
+            escapeCsvField(entry.uploaderName),
+            escapeCsvField(entry.date),
+            escapeCsvField(entry.time),
+            escapeCsvField(entry.amount),
+            escapeCsvField(entry.sender || "-"),
+            escapeCsvField(entry.receiver || "-"),
+            escapeCsvField(entry.status),
+            escapeCsvField(entry.receiptName),
           ].join(","),
         )
 
-        return [header.join(","), ...body].join("\n")
+        const quotedHeader = header.map(h => `"${h}"`).join(",")
+        return [quotedHeader, ...body].join("\n")
       },
     }),
     {

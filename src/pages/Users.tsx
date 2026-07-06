@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react"
 
 import AppShell from "@/components/AppShell"
 import { useAppStore } from "@/store/appStore"
+import type { ManagedUser } from "@/types/app"
 
 export default function Users() {
   const managedUsers = useAppStore((state) => state.managedUsers)
@@ -10,6 +11,8 @@ export default function Users() {
   const deactivateManagedUser = useAppStore((state) => state.deactivateManagedUser)
   const resetManagedUserPassword = useAppStore((state) => state.resetManagedUserPassword)
   const isDataLoading = useAppStore((state) => state.isDataLoading)
+  const transactions = useAppStore((state) => state.transactions)
+  const loadTransactions = useAppStore((state) => state.loadTransactions)
 
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
@@ -21,7 +24,8 @@ export default function Users() {
 
   useEffect(() => {
     void loadManagedUsers()
-  }, [loadManagedUsers])
+    void loadTransactions()
+  }, [loadManagedUsers, loadTransactions])
 
   const filteredUsers = managedUsers.filter((user) => {
     const q = searchQuery.toLowerCase().trim()
@@ -81,6 +85,51 @@ export default function Users() {
       }))
     }
     setIsSubmitting(false)
+  }
+
+  const downloadUserReport = (user: ManagedUser) => {
+    const userTransactions = transactions.filter(
+      (t) => t.uploaderId === user.id || t.uploaderName.toLowerCase() === user.name.toLowerCase()
+    )
+
+    const escapeCsvField = (val: string) => {
+      const stringified = String(val ?? "")
+      const escaped = stringified.replace(/"/g, '""')
+      return `"${escaped}"`
+    }
+
+    const csvContent = [
+      `"User Activity Report"`,
+      `"Name",${escapeCsvField(user.name)}`,
+      `"Email",${escapeCsvField(user.email)}`,
+      `"Role","${user.role}"`,
+      `"Status","${user.isActive ? "Active" : "Inactive"}"`,
+      `"Total Submissions","${userTransactions.length}"`,
+      ``,
+      `"Transaction ID","Channel","Date","Time","Amount","Status","Document Name"`
+    ]
+
+    userTransactions.forEach((t) => {
+      csvContent.push(
+        [
+          escapeCsvField(t.transactionId),
+          escapeCsvField(t.channel),
+          escapeCsvField(t.date),
+          escapeCsvField(t.time),
+          escapeCsvField(t.amount),
+          escapeCsvField(t.status),
+          escapeCsvField(t.receiptName),
+        ].join(",")
+      )
+    })
+
+    const blob = new Blob([csvContent.join("\n")], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = `report-${user.name.toLowerCase().replace(/\s+/g, "-")}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
   }
 
   return (
@@ -216,8 +265,17 @@ export default function Users() {
                   </div>
 
                   {user.role === "admin" ? (
-                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">
-                      Single admin account is locked for safety.
+                    <div className="flex flex-col gap-3 sm:min-w-[320px]">
+                      <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 text-center">
+                        Single admin account is locked for safety.
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => downloadUserReport(user)}
+                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                      >
+                        Download Activity Report
+                      </button>
                     </div>
                   ) : (
                     <div className="grid gap-3 sm:min-w-[320px]">
@@ -256,6 +314,13 @@ export default function Users() {
                           Deactivate user
                         </button>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => downloadUserReport(user)}
+                        className="w-full rounded-2xl border border-slate-200 bg-slate-950 px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+                      >
+                        Download Activity Report
+                      </button>
                     </div>
                   )}
                 </div>
