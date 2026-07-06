@@ -21,10 +21,10 @@ TRANSACTION_ID_PATTERNS = [
 ]
 AMOUNT_PATTERNS = [
     re.compile(
-        r"(?:amount|total|paid|payment)\s*[:.\-]?\s*(?:pkr|rs\.?|aed|usd)?\s*([0-9][0-9,]*(?:\.[0-9]{2})?)",
+        r"(?:amount|total|paid|payment)\s*[:.\-]?\s*(?:pkr|rs\.?|aed|usd)?\s*([0-9][0-9,\s]*(?:\.[0-9]{2})?)",
         re.IGNORECASE,
     ),
-    re.compile(r"(?:pkr|rs\.?|aed|usd)\s*([0-9][0-9,]*(?:\.[0-9]{2})?)", re.IGNORECASE),
+    re.compile(r"(?:pkr|rs\.?|aed|usd)\s*([0-9][0-9,\s]*(?:\.[0-9]{2})?)", re.IGNORECASE),
 ]
 TEXT_NORMALIZATIONS = (
     (re.compile(r"(?i)trans\s*action"), "Transaction"),
@@ -251,7 +251,8 @@ def parse_amount(text: str) -> str:
     if not match:
         return ""
 
-    digits = match.group(1).replace(",", "")
+    raw_digits = match.group(1).strip()
+    digits = re.sub(r"[\s,]", "", raw_digits)
     try:
         numeric = float(digits)
     except ValueError:
