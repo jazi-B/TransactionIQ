@@ -152,6 +152,7 @@ export default function Users() {
 
           <form
             onSubmit={handleCreate}
+            autoComplete="off"
             className="rounded-[28px] border border-slate-200 bg-white p-6"
           >
             <p className="text-xs uppercase tracking-[0.35em] text-slate-500">
@@ -163,6 +164,7 @@ export default function Users() {
                 <input
                   value={name}
                   onChange={(event) => setName(event.target.value)}
+                  autoComplete="one-time-code"
                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
                   placeholder="Enter staff name"
                   required
@@ -174,6 +176,7 @@ export default function Users() {
                   type="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
+                  autoComplete="one-time-code"
                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
                   placeholder="staff@company.com"
                   required
@@ -187,6 +190,7 @@ export default function Users() {
                   type="password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
+                  autoComplete="new-password"
                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
                   placeholder="Enter starting password"
                   required
