@@ -42,13 +42,14 @@ DATE_PATTERNS = [
     re.compile(r"\b(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\b"),
     re.compile(r"\b(\d{1,2}[A-Za-z]{3,9}\d{4})\b"),
 ]
-TIME_PATTERN = re.compile(r"\b(\d{1,2}:\d{2}(?::\d{2})?\s?(?:AM|PM)?)\b", re.IGNORECASE)
+TIME_PATTERN = re.compile(r"\b(\d{1,2}:\d{2}(?::\d{2})? ?(?:AM|PM)?)\b", re.IGNORECASE)
 PARTY_PATTERNS = {
     "sender": [
-        re.compile(r"(?:sender\s*name|sender|from|paid\s*by|payer\s*name|payer|customer\s*name|customer|account\s*holder)\s*[:.\-]\s*(.+)", re.IGNORECASE),
+        re.compile(r"(?:sender\s*name|sender|from|paid\s*by|payer\s*name|payer|customer\s*name|customer|account\s*holder|bill\s*to|billed\s*to|invoice\s*to|invoiced\s*to)\s*[:.\-]\s*(.+)", re.IGNORECASE),
     ],
     "receiver": [
-        re.compile(r"(?:receiver\s*name|receiver|to|paid\s*to|payee\s*name|payee|merchant\s*name|merchant|beneficiary\s*name|beneficiary)\s*[:.\-]\s*(.+)", re.IGNORECASE),
+        re.compile(r"(?:receiver\s*name|receiver|paid\s*to|payee\s*name|payee|merchant\s*name|merchant|beneficiary\s*name|beneficiary)\s*[:.\-]\s*(.+)", re.IGNORECASE),
+        re.compile(r"\b(?<!bill\s)(?<!billed\s)(?<!invoice\s)(?<!invoiced\s)to\s*[:.\-]\s*(.+)", re.IGNORECASE),
     ],
 }
 
@@ -77,7 +78,6 @@ def current_time() -> str:
 
 
 def process_receipt(file_bytes: bytes, file_name: str, channel: str) -> OcrExtraction:
-    del channel
     file_hash = hashlib.sha256(OCR_CACHE_VERSION + file_bytes).hexdigest()
     text, source = extract_text(file_bytes)
     text = normalize_ocr_text(text)
@@ -92,6 +92,14 @@ def process_receipt(file_bytes: bytes, file_name: str, channel: str) -> OcrExtra
     time = template_fields.get("time") or parse_time(text)
     sender = template_fields.get("sender") or parse_party(text, "sender")
     receiver = template_fields.get("receiver") or parse_party(text, "receiver")
+
+    # 3. Invoice-specific logic
+    is_invoice_channel = channel.lower() == "invoice" or "invoice" in file_name.lower() or "invoice" in text.lower() or "bill" in text.lower()
+    if is_invoice_channel:
+        if not receiver or (sender and receiver.lower() == sender.lower()):
+            alt_receiver = fallback_invoice_receiver(text)
+            if alt_receiver and alt_receiver.lower() != (sender or "").lower():
+                receiver = alt_receiver
 
     if not transaction_id and not text.strip():
         transaction_id = fallback_transaction_id(file_hash)
@@ -231,6 +239,17 @@ def normalize_ocr_text(text: str) -> str:
     return normalized
 
 
+def is_phone_number(value: str) -> bool:
+    clean = re.sub(r"[^0-9]", "", value)
+    if clean.startswith("03") and len(clean) == 11:
+        return True
+    if clean.startswith("923") and len(clean) == 12:
+        return True
+    if len(clean) in (10, 11) and clean.startswith("0"):
+        return True
+    return False
+
+
 def parse_transaction_id(text: str) -> str:
     if not text:
         return ""
@@ -241,6 +260,8 @@ def parse_transaction_id(text: str) -> str:
             continue
         compact = re.sub(r"[^a-zA-Z0-9]", "", match.group(1)).upper()
         if len(compact) >= 4:
+            if is_phone_number(compact):
+                continue
             return compact
     return ""
 
@@ -334,6 +355,27 @@ def sanitize_party(value: str) -> str:
     if len(candidate) < 2:
         return ""
     return candidate[:60]
+
+
+def fallback_invoice_receiver(text: str) -> str:
+    if not text:
+        return ""
+    ignore_words = {"invoice", "receipt", "bill", "payment", "tax", "statement", "success", "successful", "transaction", "details", "summary", "draft"}
+    for line in text.splitlines():
+        clean_line = line.strip()
+        if not clean_line:
+            continue
+        if len(clean_line) < 3 or clean_line[0].isdigit():
+            continue
+        words = [w.lower() for w in re.findall(r"\b\w+\b", clean_line)]
+        if not words:
+            continue
+        if all(w in ignore_words for w in words):
+            continue
+        clean_name = sanitize_party(clean_line)
+        if clean_name and len(clean_name) >= 3:
+            return clean_name
+    return ""
 
 
 def fallback_transaction_id(file_hash: str) -> str:
@@ -499,8 +541,8 @@ def try_parse_template(text: str) -> dict[str, str]:
         if amt_match:
             fields["amount"] = clean_amount_val(amt_match.group(1))
 
-        # Date & Time: 06-Jul-202610:29PM
-        dt_match = re.search(r"(\d{1,2}-[A-Za-z]{3}-\d{4})\s*(\d{1,2}:\d{2}\s*(?:AM|PM)?)", text, re.IGNORECASE)
+        # Date & Time: 06-Jul-202610:29PM or 07July202612:38PM
+        dt_match = re.search(r"(\d{1,2}\s*-?\s*[A-Za-z]{3,9}\s*-?\s*\d{4})\s*(\d{1,2}:\d{2}\s*(?:AM|PM)?)", text, re.IGNORECASE)
         if dt_match:
             fields["date"] = parse_date_value(dt_match.group(1))
             fields["time"] = parse_time_value(dt_match.group(2))

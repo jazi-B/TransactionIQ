@@ -453,6 +453,11 @@ export const useAppStore = create<AppState>()(
           return `"${escaped}"`
         }
 
+        const cleanAmount = (val: string) => {
+          const cleaned = String(val ?? "").replace(/[^0-9.]/g, "")
+          return cleaned || "0"
+        }
+
         const body = rows.map((entry) => {
           let uploadDate = "-"
           let uploadTime = "-"
@@ -477,7 +482,7 @@ export const useAppStore = create<AppState>()(
             escapeCsvField(entry.uploaderName),
             escapeCsvField(entry.date),
             escapeCsvField(entry.time),
-            escapeCsvField(entry.amount),
+            escapeCsvField(cleanAmount(entry.amount)),
             escapeCsvField(entry.sender || "-"),
             escapeCsvField(entry.receiver || "-"),
             escapeCsvField(entry.status),
