@@ -467,6 +467,88 @@ def try_parse_template(text: str) -> dict[str, str]:
             fields["receiver"] = receiver_match.group(1).strip()
 
     # 5. NayaPay Template
+    # 5. MCB Template
+    elif "refnumber" in lower_text.replace(" ", "") and "paidby" in lower_text.replace(" ", ""):
+        id_match = re.search(r"Ref\s*Number\s*\n\s*([A-Z0-9]+)", text, re.IGNORECASE)
+        if id_match:
+            fields["transaction_id"] = id_match.group(1).upper()
+
+        amt_match = re.search(r"Amount\s*Sent\s*\n\s*(?:PKR|Rs\.?)\s*([0-9, ]+(?:\.[0-9]{2})?)", text, re.IGNORECASE)
+        if amt_match:
+            fields["amount"] = clean_amount_val(amt_match.group(1))
+
+        # Date: 07Jul2026at6:01AM
+        dt_match = re.search(r"(\d{1,2}\s*[A-Za-z]{3}\s*\d{4})\s*at\s*(\d{1,2}:\d{2}\s*(?:AM|PM)?)", text, re.IGNORECASE)
+        if dt_match:
+            raw_date = dt_match.group(1).strip()
+            if len(raw_date) == 9:  # DDMMMYYYY
+                raw_date = f"{raw_date[:2]} {raw_date[2:5]} {raw_date[5:]}"
+            fields["date"] = parse_date_value(raw_date)
+            fields["time"] = parse_time_value(dt_match.group(2))
+
+        sender_match = re.search(r"Paid\s*By\s*\n\s*([^\n]+)", text, re.IGNORECASE)
+        if sender_match:
+            fields["sender"] = sender_match.group(1).strip()
+
+        receiver_match = re.search(r"Sent\s*To\s*\n\s*([^\n]+)", text, re.IGNORECASE)
+        if receiver_match:
+            fields["receiver"] = receiver_match.group(1).strip()
+
+    # 6. Easypaisa Template
+    elif "easypaisa" in lower_text:
+        id_match = re.search(r"ID#\s*(\d+)", text, re.IGNORECASE)
+        if id_match:
+            fields["transaction_id"] = id_match.group(1)
+
+        # Total Amount Rs.500.00
+        amt_match = re.search(r"Total\s*Amount\s*\n\s*(?:PKR|Rs\.?)\s*([0-9, ]+(?:\.[0-9]{2})?)", text, re.IGNORECASE)
+        if not amt_match:
+            amt_match = re.search(r"Amount\s*\n\s*([0-9, ]+(?:\.[0-9]{2})?)", text, re.IGNORECASE)
+        if amt_match:
+            fields["amount"] = clean_amount_val(amt_match.group(1))
+
+        # Date & Time: 06-Jul-202610:29PM
+        dt_match = re.search(r"(\d{1,2}-[A-Za-z]{3}-\d{4})\s*(\d{1,2}:\d{2}\s*(?:AM|PM)?)", text, re.IGNORECASE)
+        if dt_match:
+            fields["date"] = parse_date_value(dt_match.group(1))
+            fields["time"] = parse_time_value(dt_match.group(2))
+
+        sender_match = re.search(r"Sent\s*by\s*\n\s*([^\n]+)", text, re.IGNORECASE)
+        if sender_match:
+            fields["sender"] = sender_match.group(1).strip()
+
+        receiver_match = re.search(r"Sentto\s*\n\s*([^\n]+)", text, re.IGNORECASE)
+        if receiver_match:
+            fields["receiver"] = receiver_match.group(1).strip()
+
+    # 7. SadaPay Template (Disambiguated from NayaPay destination bank keyword)
+    elif "sadapay" in lower_text and "destinationbank" not in lower_text:
+        id_match = re.search(r"Referencenumber\s*\n\s*([A-Za-z0-9\-]+)", text, re.IGNORECASE)
+        if id_match:
+            fields["transaction_id"] = re.sub(r"[^A-Za-z0-9]", "", id_match.group(1)).upper()
+
+        # Amount: Rs.1 (Find first match after Share)
+        share_index = lower_text.find("share")
+        if share_index != -1:
+            sub_text = lower_text[share_index:]
+            amt_match = re.search(r"(?:rs\.?|pkr)\s*([0-9, ]+(?:\.[0-9]{2})?)", sub_text)
+            if amt_match:
+                fields["amount"] = clean_amount_val(amt_match.group(1))
+
+        # Date & Time: 07 July2026,06:02AM
+        dt_match = re.search(r"(\d{1,2}\s*[A-Za-z]+\s*\d{4}),\s*(\d{2}:\d{2}\s*(?:AM|PM)?)", text, re.IGNORECASE)
+        if dt_match:
+            raw_date = dt_match.group(1).strip()
+            fields["date"] = parse_date_value(raw_date)
+            fields["time"] = parse_time_value(dt_match.group(2))
+
+        # Sender & Receiver (Munazza Razzaqto\nMUHAMMADJAZIB)
+        names_match = re.search(r"([^\n]+)to\s*\n\s*([^\n]+)", text, re.IGNORECASE)
+        if names_match:
+            fields["sender"] = names_match.group(1).strip()
+            fields["receiver"] = names_match.group(2).strip()
+
+    # 8. NayaPay Template
     elif "nayapay" in lower_text:
         # Transaction ID
         id_match = re.search(r"Transaction\s*ID\s*\n\s*([a-z0-9]{16,32})", text, re.IGNORECASE)
@@ -505,20 +587,22 @@ def parse_date_value(value: str) -> str:
     # Clean spaces (e.g. "07July 2026" or "07July2026" -> "07 July 2026")
     value = re.sub(r"(\d{1,2})([A-Za-z]+)\s*(\d{4})", r"\1 \2 \3", value)
 
-    if len(value.split("-")[0]) == 4:
-        return value
-    if value[0].isdigit() and value.count("-") == 2:
-        day, month, year = value.split("-")
-        return f"{year}-{month.zfill(2)}-{day.zfill(2)}"
-    try:
-        parsed = datetime.strptime(value, "%d %B %Y")
-        return parsed.strftime("%Y-%m-%d")
-    except ValueError:
+    # Try standard string date conversions first to handle month names correctly (Jul, July, etc.)
+    for fmt in ("%d-%b-%Y", "%d %b %Y", "%d-%B-%Y", "%d %B %Y", "%Y-%m-%d", "%d-%m-%Y"):
         try:
-            parsed = datetime.strptime(value, "%d %b %Y")
+            parsed = datetime.strptime(value, fmt)
             return parsed.strftime("%Y-%m-%d")
         except ValueError:
-            pass
+            continue
+
+    # Fallback to direct hyphen split if numeric only
+    if value[0].isdigit() and value.count("-") == 2:
+        parts = value.split("-")
+        if len(parts[0]) == 4:
+            return value
+        day, month, year = parts
+        if day.isdigit() and month.isdigit() and year.isdigit():
+            return f"{year}-{month.zfill(2)}-{day.zfill(2)}"
     return ""
 
 

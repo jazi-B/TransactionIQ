@@ -8,16 +8,33 @@ function formatStatus(status: string) {
   return status.replace("_", " ")
 }
 
+function formatSaveDate(isoStr: string) {
+  if (!isoStr) return "-"
+  try {
+    const parts = isoStr.split("T")
+    return parts[0]
+  } catch {
+    return isoStr
+  }
+}
+
 export default function Dashboard() {
   const dashboardSummary = useAppStore((state) => state.dashboardSummary)
   const activities = useAppStore((state) => state.activities)
   const currentUser = useAppStore((state) => state.currentUser)
   const loadDashboard = useAppStore((state) => state.loadDashboard)
+  const loadTransactions = useAppStore((state) => state.loadTransactions)
+  const transactions = useAppStore((state) => state.transactions)
   const isDataLoading = useAppStore((state) => state.isDataLoading)
 
   useEffect(() => {
     void loadDashboard()
-  }, [loadDashboard])
+    void loadTransactions()
+  }, [loadDashboard, loadTransactions])
+
+  const suspiciousCount = useMemo(() => {
+    return transactions.filter((t) => isSuspiciousTransaction(t.date)).length
+  }, [transactions])
 
   const dashboardMetrics = [
     {
@@ -41,6 +58,15 @@ export default function Dashboard() {
       change: "ready for finance review",
     },
   ]
+
+  if (currentUser?.role === "admin") {
+    dashboardMetrics.push({
+      label: "Suspicious audits",
+      value: String(suspiciousCount),
+      change: "pending manual review",
+    })
+  }
+
   const recentTransactions = (dashboardSummary?.recentTransactions ?? []).slice(0, 3)
   const trendBuckets = useMemo(() => {
     const formatter = new Intl.DateTimeFormat("en-US", { weekday: "short" })
@@ -79,7 +105,7 @@ export default function Dashboard() {
       title="Admin dashboard"
       subtitle="Track submissions, duplicate prevention, OCR review quality, and operator activity from one production-style workspace."
     >
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className={`grid gap-4 md:grid-cols-2 ${dashboardMetrics.length === 5 ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}>
         {dashboardMetrics.map((metric) => (
           <div
             key={metric.label}
@@ -172,6 +198,9 @@ export default function Dashboard() {
                   </div>
                   <p className="mt-2 text-sm text-slate-500">
                     {item.amount} · {item.sender || "-"} · {item.uploaderName}
+                  </p>
+                  <p className="mt-1.5 text-xs text-slate-400">
+                    Txn Date: {item.date} {item.time ? `at ${item.time}` : ""} · Saved: {formatSaveDate(item.createdAt)}
                   </p>
                 </div>
               )) ?? null}

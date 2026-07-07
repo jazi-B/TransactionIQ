@@ -9,6 +9,7 @@ import {
 
 import AppShell from "@/components/AppShell"
 import { useAppStore } from "@/store/appStore"
+import { isSuspiciousTransaction } from "@/utils/suspicious"
 
 const SUPPORTED_UPLOAD_TYPES = new Set(["image/jpeg", "image/png", "image/webp"])
 const MOBILE_OPTIMIZATION_THRESHOLD_BYTES = 500 * 1024
@@ -312,6 +313,18 @@ export default function Upload() {
           {duplicateDetected ? (
             <div className="mt-4 rounded-[22px] border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-rose-800">
               This transaction has already been submitted.
+            </div>
+          ) : null}
+
+          {draft.date && isSuspiciousTransaction(draft.date) ? (
+            <div className="mt-4 rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-800 flex items-start gap-2.5">
+              <ShieldAlert className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-semibold">⚠️ Suspicious Transaction Alert</p>
+                <p className="mt-1 leading-6">
+                  This transaction date is older than 5 days. Saving this record will automatically flag it as a <strong>Suspicious Transaction</strong> for administrative review.
+                </p>
+              </div>
             </div>
           ) : null}
 

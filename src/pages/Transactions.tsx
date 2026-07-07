@@ -20,6 +20,16 @@ function formatStatus(status: string) {
   return status.replace("_", " ")
 }
 
+function formatSaveDate(isoStr: string) {
+  if (!isoStr) return "-"
+  try {
+    const parts = isoStr.split("T")
+    return parts[0]
+  } catch {
+    return isoStr
+  }
+}
+
 export default function Transactions() {
   const transactions = useAppStore((state) => state.transactions)
   const currentUser = useAppStore((state) => state.currentUser)
@@ -95,7 +105,7 @@ export default function Transactions() {
             <span>Txn ID</span>
             <span>Sender</span>
             <span>Uploader</span>
-            <span>Date</span>
+            <span>Txn Date</span>
             <span>Document</span>
             <span>Amount</span>
             <span>Status</span>
@@ -116,8 +126,14 @@ export default function Transactions() {
                 )}
               </span>
               <span className="truncate" title={row.sender}>{row.sender || "-"}</span>
-              <span>{row.uploaderName}</span>
-              <span>{row.date}</span>
+              <div>
+                <span>{row.uploaderName}</span>
+                <span className="text-[11px] text-slate-400 block mt-0.5">Saved: {formatSaveDate(row.createdAt)}</span>
+              </div>
+              <div>
+                <span>{row.date}</span>
+                {row.time && <span className="text-[11px] text-slate-400 block mt-0.5">{row.time}</span>}
+              </div>
               <span className="truncate">{row.receiptName}</span>
               <span>{row.amount}</span>
               <span
@@ -167,7 +183,8 @@ export default function Transactions() {
               <div className="mt-4 grid gap-2 text-sm text-slate-600">
                 <p>Sender: {row.sender || "-"}</p>
                 <p>Uploader: {row.uploaderName}</p>
-                <p>Date: {row.date}</p>
+                <p>Transaction Date: {row.date} {row.time ? `at ${row.time}` : ""}</p>
+                <p>System Save Date: {formatSaveDate(row.createdAt)}</p>
                 <p>Document: {row.receiptName}</p>
               </div>
               {currentUser?.role === "admin" && (
