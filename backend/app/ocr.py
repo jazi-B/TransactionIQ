@@ -19,7 +19,7 @@ TRANSACTION_ID_PATTERNS = [
         r"txn\s*id|txn|trx\s*id|trx|"
         r"invoice\s*no|invoice\s*id|invoice|receipt\s*no|receipt|"
         r"document\s*no|document|order\s*id|order\s*no|order|payment\s*id|payment|tid|"
-        r"id|1d|ld)\s*[:.\-#]?\s*([a-z0-9][a-z0-9\-]{3,31})",
+        r"raast\s*id|raast|id|1d|ld)\s*[:.\-#]?\s*([a-z0-9\-]*[0-9][a-z0-9\-]*)",
         re.IGNORECASE,
     ),
     re.compile(r"\b([a-z]{2,10}[0-9]{4,20}|[0-9]{8,20})\b", re.IGNORECASE),
@@ -244,7 +244,8 @@ def is_phone_number(value: str) -> bool:
 def should_ignore(compact: str) -> bool:
     ignore_exact = {
         "DETAILS", "SUMMARY", "HISTORY", "PROCESSED", "AMOUNT", "PKR",
-        "RS", "FEE", "CHARGES", "TAX", "DATE", "TIME", "FUNDS", "TRANSFER", "MONEY", "SENT", "NUMBER", "NO"
+        "RS", "FEE", "CHARGES", "TAX", "DATE", "TIME", "FUNDS", "TRANSFER", "MONEY", "SENT", "NUMBER", "NO",
+        "REFERENCE", "REF", "ID", "TXN", "TRX", "TRANSACTION", "RECEIPT", "INVOICE", "ORDER"
     }
     if compact in ignore_exact:
         return True
@@ -257,13 +258,15 @@ def parse_transaction_id(text: str) -> str:
     if not text:
         return ""
 
-    for pattern in TRANSACTION_ID_PATTERNS:
+    for i, pattern in enumerate(TRANSACTION_ID_PATTERNS):
         for match in pattern.finditer(text):
             compact = re.sub(r"[^a-zA-Z0-9]", "", match.group(1)).upper()
             if should_ignore(compact):
                 continue
             if len(compact) >= 4:
-                if is_phone_number(compact):
+                # If matched by fallback regex (i == 1) and it's a phone number, ignore it.
+                # But if matched by an explicit prefix like "Raast ID", allow it.
+                if i == 1 and is_phone_number(compact):
                     continue
                 return compact
     return ""
