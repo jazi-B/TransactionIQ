@@ -23,17 +23,20 @@ function formatStatus(status: string) {
 function formatSaveDateTime(isoStr: string) {
   if (!isoStr) return "-"
   try {
-    const parts = isoStr.split("T")
-    const datePart = parts[0]
-    if (parts.length < 2) return datePart
+    const dateObj = new Date(isoStr + (isoStr.endsWith("Z") ? "" : "Z"))
+    if (isNaN(dateObj.getTime())) return isoStr
 
-    const timePart = parts[1].split(".")[0]
-    const timeParts = timePart.split(":")
-    const hours = parseInt(timeParts[0], 10)
-    const minutes = timeParts[1]
-    const ampm = hours >= 12 ? "PM" : "AM"
-    const displayHours = hours % 12 || 12
-    return `${datePart} ${String(displayHours).padStart(2, "0")}:${minutes} ${ampm}`
+    const year = dateObj.getFullYear()
+    const month = String(dateObj.getMonth() + 1).padStart(2, "0")
+    const day = String(dateObj.getDate()).padStart(2, "0")
+    
+    const time = dateObj.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true
+    })
+    
+    return `${year}-${month}-${day} ${time}`
   } catch {
     return isoStr
   }
