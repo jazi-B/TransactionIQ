@@ -13,8 +13,12 @@ from PIL import Image, ImageOps
 
 TRANSACTION_ID_PATTERNS = [
     re.compile(
-        r"(?:transaction|txn|trx|trans|reference|ref|invoice|receipt|document|order|payment)"
-        r"\s*(?:id|no|number|#)\s*[:.\-]?\s*([a-z0-9][a-z0-9\-]{3,31})",
+        r"(?:transaction\s*reference|transaction\s*id|transaction\s*no|transaction\s*number|transaction|"
+        r"reference\s*number|reference\s*no|reference\s*id|reference|ref|"
+        r"txn\s*id|txn|trx\s*id|trx|"
+        r"invoice\s*no|invoice\s*id|invoice|receipt\s*no|receipt|"
+        r"document\s*no|document|order\s*id|order\s*no|order|payment\s*id|payment|tid|"
+        r"id)\s*[:.\-#]?\s*([a-z0-9][a-z0-9\-]{3,31})",
         re.IGNORECASE,
     ),
     re.compile(r"\b([a-z]{2,10}[0-9]{4,20}|[0-9]{8,20})\b", re.IGNORECASE),
@@ -82,24 +86,10 @@ def process_receipt(file_bytes: bytes, file_name: str, channel: str) -> OcrExtra
     text, source = extract_text(file_bytes)
     text = normalize_ocr_text(text)
 
-    # 1. Try template-based parsing first
-    template_fields = try_parse_template(text)
-
-    # 2. Extract with fallback to generic parsers if template didn't find them
-    transaction_id = template_fields.get("transaction_id") or parse_transaction_id(text)
-    amount = template_fields.get("amount") or parse_amount(text)
-    date = template_fields.get("date") or parse_date(text)
-    time = template_fields.get("time") or parse_time(text)
-    sender = template_fields.get("sender") or parse_party(text, "sender")
-    receiver = template_fields.get("receiver") or parse_party(text, "receiver")
-
-    # 3. Invoice-specific logic
-    is_invoice_channel = channel.lower() == "invoice" or "invoice" in file_name.lower() or "invoice" in text.lower() or "bill" in text.lower()
-    if is_invoice_channel:
-        if not receiver or (sender and receiver.lower() == sender.lower()):
-            alt_receiver = fallback_invoice_receiver(text)
-            if alt_receiver and alt_receiver.lower() != (sender or "").lower():
-                receiver = alt_receiver
+    transaction_id = parse_transaction_id(text)
+    amount = parse_amount(text)
+    date = parse_date(text)
+    time = parse_time(text)
 
     if not transaction_id and not text.strip():
         transaction_id = fallback_transaction_id(file_hash)
@@ -115,8 +105,8 @@ def process_receipt(file_bytes: bytes, file_name: str, channel: str) -> OcrExtra
         date=date,
         time=time,
         amount=amount,
-        sender=sender,
-        receiver=receiver,
+        sender="",
+        receiver="",
         source=source,
     )
 
@@ -382,238 +372,7 @@ def fallback_transaction_id(file_hash: str) -> str:
     return f"OCR-{file_hash[:8].upper()}"
 
 
-def try_parse_template(text: str) -> dict[str, str]:
-    text = text.replace("\r\n", "\n").replace("\r", "\n")
-    fields = {}
-    lower_text = text.lower()
 
-    # 1. Bank AL Habib Template (Green UI, CM ID)
-    if "alhabib" in lower_text.replace(" ", "") or "raastpayment" in lower_text or "payvia\nraastp2p" in lower_text.replace(" ", ""):
-        # Transaction ID (e.g. CM126466211417005)
-        id_match = re.search(r"\b(CM\d+)\b", text, re.IGNORECASE)
-        if id_match:
-            fields["transaction_id"] = id_match.group(1).upper()
-
-        # Amount
-        amt_match = re.search(r"Amount\s*\n\s*(?:PKR|Rs\.?)\s*([0-9, ]+(?:\.[0-9]{2})?)", text, re.IGNORECASE)
-        if amt_match:
-            fields["amount"] = clean_amount_val(amt_match.group(1))
-
-        # Date & Time (e.g. 2026-07-07T05:31:31)
-        dt_match = re.search(r"TransactionDate&Time\s*\n\s*(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})", text, re.IGNORECASE)
-        if dt_match:
-            fields["date"] = dt_match.group(1)
-            fields["time"] = parse_time_value(dt_match.group(2))
-
-        # Receiver (Beneficiary Name)
-        receiver_match = re.search(r"BeneficiaryName\s*\n\s*([^\n]+)", text, re.IGNORECASE)
-        if receiver_match:
-            fields["receiver"] = receiver_match.group(1).strip()
-
-    # 2. Bank of Punjab (BOP) Template
-    elif "paidfromaccounttitle" in lower_text or "transaction reference no." in lower_text:
-        # Transaction ID
-        id_match = re.search(r"Transaction\s*Reference\s*No\.\s*\n\s*(\d+)", text, re.IGNORECASE)
-        if id_match:
-            fields["transaction_id"] = id_match.group(1)
-
-        # Amount (e.g. PKR 100.00)
-        amt_match = re.search(r"SUCCESS!\s*\n\s*(?:PKR|Rs\.?)\s*([0-9, ]+(?:\.[0-9]{2})?)", text, re.IGNORECASE)
-        if not amt_match:
-            amt_match = re.search(r"(?:PKR|Rs\.?)\s*([0-9, ]+(?:\.[0-9]{2})?)", text, re.IGNORECASE)
-        if amt_match:
-            fields["amount"] = clean_amount_val(amt_match.group(1))
-
-        # Date & Time (e.g. 7-Jul-2026-5:52:17AM)
-        dt_match = re.search(r"(\d{1,2}-[A-Za-z]{3}-\d{4})-(\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM)?)", text, re.IGNORECASE)
-        if dt_match:
-            raw_date = dt_match.group(1).replace("-", " ")
-            fields["date"] = parse_date_value(raw_date)
-            fields["time"] = parse_time_value(dt_match.group(2))
-
-        # Sender (Paid From Account Title)
-        sender_match = re.search(r"PaidFromAccountTitle\s*\n\s*([^\n]+)", text, re.IGNORECASE)
-        if sender_match:
-            fields["sender"] = sender_match.group(1).strip()
-
-        # Receiver (Payee Name)
-        receiver_match = re.search(r"PayeeName\s*\n\s*([^\n]+)", text, re.IGNORECASE)
-        if receiver_match:
-            fields["receiver"] = receiver_match.group(1).strip()
-
-    # 3. UBL (United Bank Limited) Template
-    elif "ubl" in lower_text or "unitedbank" in lower_text or "transactiondetails\n" in lower_text.replace(" ", ""):
-        # Date & Time (e.g. 07July,2026 and 05:56AM)
-        d_match = re.search(r"(\d{1,2}\s*[A-Za-z]+,\s*\d{4})", text, re.IGNORECASE)
-        if d_match:
-            raw_date = d_match.group(1).replace(",", "").strip()
-            fields["date"] = parse_date_value(raw_date)
-
-        t_match = re.search(r"(\d{2}:\d{2}\s*(?:AM|PM)?)", text, re.IGNORECASE)
-        if t_match:
-            fields["time"] = parse_time_value(t_match.group(1))
-
-        # Amount
-        amt_match = re.search(r"Amount\s*\n\s*(?:PKR|Rs\.?)\s*([0-9, ]+(?:\.[0-9]{2})?)", text, re.IGNORECASE)
-        if amt_match:
-            fields["amount"] = clean_amount_val(amt_match.group(1))
-
-        # Sender (Line before From)
-        sender_match = re.search(r"([^\n]+)\s*\n\s*From", text, re.IGNORECASE)
-        if sender_match:
-            fields["sender"] = sender_match.group(1).strip()
-
-        # Receiver (Line before To)
-        receiver_match = re.search(r"([^\n]+)\s*\n\s*To", text, re.IGNORECASE)
-        if receiver_match:
-            fields["receiver"] = receiver_match.group(1).strip()
-
-    # 4. JazzCash / TID Template
-    elif "jazzcash" in lower_text or "tid:" in lower_text:
-        # Transaction ID
-        tid_match = re.search(r"tid[:\s]*(\d+)", text, re.IGNORECASE)
-        if tid_match:
-            fields["transaction_id"] = tid_match.group(1)
-
-        # Date & Time (e.g. On 07 Jul 2026 at 05:34 or On07Jul2026at05:34)
-        dt_match = re.search(r"On\s*(\d{1,2}\s*[A-Za-z]{3}\s*\d{4})\s*at\s*(\d{2}:\d{2})", text, re.IGNORECASE)
-        if dt_match:
-            raw_date = dt_match.group(1).strip()
-            # Clean spaces if OCR joined them
-            if len(raw_date) == 9:  # DDMMMYYYY (e.g. 07Jul2026)
-                raw_date = f"{raw_date[:2]} {raw_date[2:5]} {raw_date[5:]}"
-            fields["date"] = parse_date_value(raw_date)
-            fields["time"] = parse_time_value(dt_match.group(2))
-
-        # Amount
-        amt_match = re.search(r"Rs\.\s*([0-9, ]+(?:\.[0-9]{2})?)", text)
-        if amt_match:
-            fields["amount"] = clean_amount_val(amt_match.group(1))
-
-        # Sender (From)
-        sender_match = re.search(r"From\s*\n\s*([^\n]+)", text, re.IGNORECASE)
-        if sender_match:
-            fields["sender"] = sender_match.group(1).strip()
-
-        # Receiver (To)
-        receiver_match = re.search(r"To\s*\n\s*([^\n]+)", text, re.IGNORECASE)
-        if receiver_match:
-            fields["receiver"] = receiver_match.group(1).strip()
-
-    # 5. NayaPay Template
-    # 5. MCB Template
-    elif "refnumber" in lower_text.replace(" ", "") and "paidby" in lower_text.replace(" ", ""):
-        id_match = re.search(r"Ref\s*Number\s*\n\s*([A-Z0-9]+)", text, re.IGNORECASE)
-        if id_match:
-            fields["transaction_id"] = id_match.group(1).upper()
-
-        amt_match = re.search(r"Amount\s*Sent\s*\n\s*(?:PKR|Rs\.?)\s*([0-9, ]+(?:\.[0-9]{2})?)", text, re.IGNORECASE)
-        if amt_match:
-            fields["amount"] = clean_amount_val(amt_match.group(1))
-
-        # Date: 07Jul2026at6:01AM
-        dt_match = re.search(r"(\d{1,2}\s*[A-Za-z]{3}\s*\d{4})\s*at\s*(\d{1,2}:\d{2}\s*(?:AM|PM)?)", text, re.IGNORECASE)
-        if dt_match:
-            raw_date = dt_match.group(1).strip()
-            if len(raw_date) == 9:  # DDMMMYYYY
-                raw_date = f"{raw_date[:2]} {raw_date[2:5]} {raw_date[5:]}"
-            fields["date"] = parse_date_value(raw_date)
-            fields["time"] = parse_time_value(dt_match.group(2))
-
-        sender_match = re.search(r"Paid\s*By\s*\n\s*([^\n]+)", text, re.IGNORECASE)
-        if sender_match:
-            fields["sender"] = sender_match.group(1).strip()
-
-        receiver_match = re.search(r"Sent\s*To\s*\n\s*([^\n]+)", text, re.IGNORECASE)
-        if receiver_match:
-            fields["receiver"] = receiver_match.group(1).strip()
-
-    # 6. Easypaisa Template
-    elif "easypaisa" in lower_text:
-        id_match = re.search(r"ID#\s*(\d+)", text, re.IGNORECASE)
-        if id_match:
-            fields["transaction_id"] = id_match.group(1)
-
-        # Total Amount Rs.500.00
-        amt_match = re.search(r"Total\s*Amount\s*\n\s*(?:PKR|Rs\.?)\s*([0-9, ]+(?:\.[0-9]{2})?)", text, re.IGNORECASE)
-        if not amt_match:
-            amt_match = re.search(r"Amount\s*\n\s*([0-9, ]+(?:\.[0-9]{2})?)", text, re.IGNORECASE)
-        if amt_match:
-            fields["amount"] = clean_amount_val(amt_match.group(1))
-
-        # Date & Time: 06-Jul-202610:29PM or 07July202612:38PM
-        dt_match = re.search(r"(\d{1,2}\s*-?\s*[A-Za-z]{3,9}\s*-?\s*\d{4})\s*(\d{1,2}:\d{2}\s*(?:AM|PM)?)", text, re.IGNORECASE)
-        if dt_match:
-            fields["date"] = parse_date_value(dt_match.group(1))
-            fields["time"] = parse_time_value(dt_match.group(2))
-
-        sender_match = re.search(r"Sent\s*by\s*\n\s*([^\n]+)", text, re.IGNORECASE)
-        if sender_match:
-            fields["sender"] = sender_match.group(1).strip()
-
-        receiver_match = re.search(r"Sentto\s*\n\s*([^\n]+)", text, re.IGNORECASE)
-        if receiver_match:
-            fields["receiver"] = receiver_match.group(1).strip()
-
-    # 7. SadaPay Template (Disambiguated from NayaPay destination bank keyword)
-    elif "sadapay" in lower_text and "destinationbank" not in lower_text:
-        id_match = re.search(r"Referencenumber\s*\n\s*([A-Za-z0-9\-]+)", text, re.IGNORECASE)
-        if id_match:
-            fields["transaction_id"] = re.sub(r"[^A-Za-z0-9]", "", id_match.group(1)).upper()
-
-        # Amount: Rs.1 (Find first match after Share)
-        share_index = lower_text.find("share")
-        if share_index != -1:
-            sub_text = lower_text[share_index:]
-            amt_match = re.search(r"(?:rs\.?|pkr)\s*([0-9, ]+(?:\.[0-9]{2})?)", sub_text)
-            if amt_match:
-                fields["amount"] = clean_amount_val(amt_match.group(1))
-
-        # Date & Time: 07 July2026,06:02AM
-        dt_match = re.search(r"(\d{1,2}\s*[A-Za-z]+\s*\d{4}),\s*(\d{2}:\d{2}\s*(?:AM|PM)?)", text, re.IGNORECASE)
-        if dt_match:
-            raw_date = dt_match.group(1).strip()
-            fields["date"] = parse_date_value(raw_date)
-            fields["time"] = parse_time_value(dt_match.group(2))
-
-        # Sender & Receiver (Munazza Razzaqto\nMUHAMMADJAZIB)
-        names_match = re.search(r"([^\n]+)to\s*\n\s*([^\n]+)", text, re.IGNORECASE)
-        if names_match:
-            fields["sender"] = names_match.group(1).strip()
-            fields["receiver"] = names_match.group(2).strip()
-
-    # 8. NayaPay Template
-    elif "nayapay" in lower_text:
-        # Transaction ID
-        id_match = re.search(r"Transaction\s*ID\s*\n\s*([a-z0-9]{16,32})", text, re.IGNORECASE)
-        if id_match:
-            fields["transaction_id"] = id_match.group(1).upper()
-
-        # Amount
-        amt_match = re.search(r"Amount\s*Sent\s*\n\s*(?:PKR|Rs\.?)\s*([0-9, ]+(?:\.[0-9]{2})?)", text, re.IGNORECASE)
-        if amt_match:
-            fields["amount"] = clean_amount_val(amt_match.group(1))
-
-        # Date & Time (e.g. 07Jul2026,05:29AM)
-        dt_match = re.search(r"(\d{1,2}\s*[A-Za-z]{3}\s*\d{4}),\s*(\d{2}:\d{2}\s*(?:AM|PM)?)", text, re.IGNORECASE)
-        if dt_match:
-            raw_date = dt_match.group(1).strip()
-            if len(raw_date) == 9:  # DDMMMYYYY
-                raw_date = f"{raw_date[:2]} {raw_date[2:5]} {raw_date[5:]}"
-            fields["date"] = parse_date_value(raw_date)
-            fields["time"] = parse_time_value(dt_match.group(2))
-
-        # Sender (Source Acc. Title)
-        sender_match = re.search(r"Source\s*Acc\.\s*Title\s*\n\s*([^\n]+)", text, re.IGNORECASE)
-        if sender_match:
-            fields["sender"] = sender_match.group(1).strip()
-
-        # Receiver (Destination Acc. Title)
-        receiver_match = re.search(r"DestinationAcc\.Title\s*\n\s*([^\n]+)", text, re.IGNORECASE)
-        if receiver_match:
-            fields["receiver"] = receiver_match.group(1).strip()
-
-    return fields
 
 
 def parse_date_value(value: str) -> str:
