@@ -37,8 +37,10 @@ TEXT_NORMALIZATIONS = (
 )
 DATE_PATTERNS = [
     re.compile(r"\b(\d{4}[-/]\d{2}[-/]\d{2})\b"),
-    re.compile(r"\b(\d{2}[-/]\d{2}[-/]\d{4})\b"),
+    re.compile(r"\b(\d{1,2}[-/]\d{1,2}[-/]\d{4})\b"),
+    re.compile(r"\b(\d{1,2}[-/][A-Za-z]{3,9}[-/]\d{4})\b"),
     re.compile(r"\b(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\b"),
+    re.compile(r"\b(\d{1,2}[A-Za-z]{3,9}\d{4})\b"),
 ]
 TIME_PATTERN = re.compile(r"\b(\d{1,2}:\d{2}(?::\d{2})?\s?(?:AM|PM)?)\b", re.IGNORECASE)
 PARTY_PATTERNS = {
@@ -275,20 +277,10 @@ def parse_date(text: str) -> str:
         match = pattern.search(text)
         if not match:
             continue
-        value = match.group(1).replace("/", "-")
-        if len(value.split("-")[0]) == 4:
-            return value
-        if value[0].isdigit() and value.count("-") == 2:
-            day, month, year = value.split("-")
-            return f"{year}-{month.zfill(2)}-{day.zfill(2)}"
-        try:
-            parsed = datetime.strptime(value, "%d %B %Y")
-        except ValueError:
-            try:
-                parsed = datetime.strptime(value, "%d %b %Y")
-            except ValueError:
-                continue
-        return parsed.strftime("%Y-%m-%d")
+        val = match.group(1)
+        parsed = parse_date_value(val)
+        if parsed:
+            return parsed
     return ""
 
 
