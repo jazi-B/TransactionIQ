@@ -14,7 +14,8 @@ from PIL import Image, ImageOps
 TRANSACTION_ID_PATTERNS = [
     re.compile(
         r"(?:transaction\s*reference|transaction\s*id|transaction\s*no|transaction\s*number|transaction|"
-        r"reference\s*number|reference\s*no|reference\s*id|reference|ref|"
+        r"reference\s*number|reference\s*no|reference\s*id|reference|"
+        r"ref\s*number|ref\s*no|ref\s*id|ref|"
         r"txn\s*id|txn|trx\s*id|trx|"
         r"invoice\s*no|invoice\s*id|invoice|receipt\s*no|receipt|"
         r"document\s*no|document|order\s*id|order\s*no|order|payment\s*id|payment|tid|"
@@ -243,7 +244,7 @@ def is_phone_number(value: str) -> bool:
 def should_ignore(compact: str) -> bool:
     ignore_exact = {
         "DETAILS", "SUMMARY", "HISTORY", "PROCESSED", "AMOUNT", "PKR",
-        "RS", "FEE", "CHARGES", "TAX", "DATE", "TIME", "FUNDS", "TRANSFER", "MONEY", "SENT"
+        "RS", "FEE", "CHARGES", "TAX", "DATE", "TIME", "FUNDS", "TRANSFER", "MONEY", "SENT", "NUMBER", "NO"
     }
     if compact in ignore_exact:
         return True
