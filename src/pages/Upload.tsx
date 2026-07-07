@@ -290,7 +290,7 @@ export default function Upload() {
                 <input
                   value={draft[item.field]}
                   onChange={(event) => updateDraft(item.field, event.target.value)}
-                  disabled={isProcessing || (item.field === "transactionId" && currentUser?.role === "staff")}
+                  disabled={isProcessing}
                   className="w-full border-none bg-transparent p-0 text-lg font-medium text-slate-950 outline-none placeholder:text-slate-300 disabled:text-slate-500"
                   placeholder={`Enter ${item.label.toLowerCase()}`}
                 />
