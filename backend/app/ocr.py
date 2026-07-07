@@ -18,7 +18,7 @@ TRANSACTION_ID_PATTERNS = [
         r"txn\s*id|txn|trx\s*id|trx|"
         r"invoice\s*no|invoice\s*id|invoice|receipt\s*no|receipt|"
         r"document\s*no|document|order\s*id|order\s*no|order|payment\s*id|payment|tid|"
-        r"id)\s*[:.\-#]?\s*([a-z0-9][a-z0-9\-]{3,31})",
+        r"id|1d|ld)\s*[:.\-#]?\s*([a-z0-9][a-z0-9\-]{3,31})",
         re.IGNORECASE,
     ),
     re.compile(r"\b([a-z]{2,10}[0-9]{4,20}|[0-9]{8,20})\b", re.IGNORECASE),
