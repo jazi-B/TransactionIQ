@@ -11,19 +11,20 @@ function formatStatus(status: string) {
 function formatSaveDateTime(isoStr: string) {
   if (!isoStr) return "-"
   try {
-    const dateObj = new Date(isoStr + (isoStr.endsWith("Z") ? "" : "Z"))
+    // Supabase returns +00:00 format - pass directly to Date()
+    const dateObj = new Date(isoStr)
     if (isNaN(dateObj.getTime())) return isoStr
 
     const year = dateObj.getFullYear()
     const month = String(dateObj.getMonth() + 1).padStart(2, "0")
     const day = String(dateObj.getDate()).padStart(2, "0")
-    
+
     const time = dateObj.toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
       hour12: true
     })
-    
+
     return `${year}-${month}-${day} ${time}`
   } catch {
     return isoStr

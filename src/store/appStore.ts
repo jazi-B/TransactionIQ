@@ -462,15 +462,15 @@ export const useAppStore = create<AppState>()(
           let uploadTime = "-"
           if (entry.createdAt) {
             try {
-              // Ensure we treat it as UTC if it lacks the Z suffix
-              const dateObj = new Date(entry.createdAt + (entry.createdAt.endsWith("Z") ? "" : "Z"))
-              
+              // Supabase returns +00:00 format - pass directly to Date()
+              const dateObj = new Date(entry.createdAt)
+
               if (!isNaN(dateObj.getTime())) {
                 const year = dateObj.getFullYear()
                 const month = String(dateObj.getMonth() + 1).padStart(2, "0")
                 const day = String(dateObj.getDate()).padStart(2, "0")
                 uploadDate = `${year}-${month}-${day}`
-                
+
                 uploadTime = dateObj.toLocaleTimeString("en-US", {
                   hour: "2-digit",
                   minute: "2-digit",
