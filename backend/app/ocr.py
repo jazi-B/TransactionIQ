@@ -58,7 +58,7 @@ PARTY_PATTERNS = {
 }
 
 _rapidocr_engine: Any | None = None
-OCR_CACHE_VERSION = b"transactioniq-ocr-v2:"
+OCR_CACHE_VERSION = b"transactioniq-ocr-v3:"
 
 
 @dataclass
@@ -240,20 +240,26 @@ def is_phone_number(value: str) -> bool:
     return False
 
 
+def should_ignore(compact: str) -> bool:
+    ignore_exact = {
+        "DETAILS", "SUMMARY", "HISTORY", "PROCESSED", "AMOUNT", "PKR",
+        "RS", "FEE", "CHARGES", "TAX", "DATE", "TIME", "FUNDS", "TRANSFER", "MONEY", "SENT"
+    }
+    if compact in ignore_exact:
+        return True
+    for partial in ["SUCCESS", "FAIL", "COMPLETE", "PENDING", "DECLINE"]:
+        if partial in compact:
+            return True
+    return False
+
 def parse_transaction_id(text: str) -> str:
     if not text:
         return ""
 
-    ignore_words = {
-        "SUCCESSFUL", "SUCCESS", "FAILED", "PENDING", "DETAILS", "SUMMARY",
-        "HISTORY", "COMPLETED", "PROCESSED", "DECLINED", "AMOUNT", "PKR",
-        "RS", "FEE", "CHARGES", "TAX", "DATE", "TIME", "FUNDS", "TRANSFER"
-    }
-
     for pattern in TRANSACTION_ID_PATTERNS:
         for match in pattern.finditer(text):
             compact = re.sub(r"[^a-zA-Z0-9]", "", match.group(1)).upper()
-            if compact in ignore_words:
+            if should_ignore(compact):
                 continue
             if len(compact) >= 4:
                 if is_phone_number(compact):
