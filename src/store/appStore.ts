@@ -219,7 +219,6 @@ export const useAppStore = create<AppState>()(
           set({
             dashboardSummary,
             activities: dashboardSummary.activities,
-            transactions: dashboardSummary.recentTransactions,
             isDataLoading: false,
           })
         } catch {
@@ -414,7 +413,9 @@ export const useAppStore = create<AppState>()(
           "Sender",
           "Receiver",
           "Status",
-          "Document Name"
+          "Document Name",
+          "Upload Date",
+          "Upload Time"
         ]
 
         const escapeCsvField = (val: string) => {
@@ -423,8 +424,25 @@ export const useAppStore = create<AppState>()(
           return `"${escaped}"`
         }
 
-        const body = rows.map((entry) =>
-          [
+        const body = rows.map((entry) => {
+          let uploadDate = "-"
+          let uploadTime = "-"
+          if (entry.createdAt) {
+            try {
+              const parts = entry.createdAt.split("T")
+              uploadDate = parts[0]
+              if (parts.length >= 2) {
+                const timePart = parts[1].split(".")[0]
+                const timeParts = timePart.split(":")
+                const hours = parseInt(timeParts[0], 10)
+                const minutes = timeParts[1]
+                const ampm = hours >= 12 ? "PM" : "AM"
+                const displayHours = hours % 12 || 12
+                uploadTime = `${String(displayHours).padStart(2, "0")}:${minutes} ${ampm}`
+              }
+            } catch {}
+          }
+          return [
             escapeCsvField(entry.transactionId),
             escapeCsvField(entry.channel),
             escapeCsvField(entry.uploaderName),
@@ -435,8 +453,10 @@ export const useAppStore = create<AppState>()(
             escapeCsvField(entry.receiver || "-"),
             escapeCsvField(entry.status),
             escapeCsvField(entry.receiptName),
-          ].join(","),
-        )
+            escapeCsvField(uploadDate),
+            escapeCsvField(uploadTime),
+          ].join(",")
+        })
 
         const quotedHeader = header.map(h => `"${h}"`).join(",")
         return [quotedHeader, ...body].join("\n")

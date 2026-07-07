@@ -106,10 +106,27 @@ export default function Users() {
       `"Status","${user.isActive ? "Active" : "Inactive"}"`,
       `"Total Submissions","${userTransactions.length}"`,
       ``,
-      `"Transaction ID","Channel","Date","Time","Amount","Status","Document Name"`
+      `"Transaction ID","Channel","Date","Time","Amount","Status","Document Name","Upload Date","Upload Time"`
     ]
 
     userTransactions.forEach((t) => {
+      let uploadDate = "-"
+      let uploadTime = "-"
+      if (t.createdAt) {
+        try {
+          const parts = t.createdAt.split("T")
+          uploadDate = parts[0]
+          if (parts.length >= 2) {
+            const timePart = parts[1].split(".")[0]
+            const timeParts = timePart.split(":")
+            const hours = parseInt(timeParts[0], 10)
+            const minutes = timeParts[1]
+            const ampm = hours >= 12 ? "PM" : "AM"
+            const displayHours = hours % 12 || 12
+            uploadTime = `${String(displayHours).padStart(2, "0")}:${minutes} ${ampm}`
+          }
+        } catch {}
+      }
       csvContent.push(
         [
           escapeCsvField(t.transactionId),
@@ -119,6 +136,8 @@ export default function Users() {
           escapeCsvField(t.amount),
           escapeCsvField(t.status),
           escapeCsvField(t.receiptName),
+          escapeCsvField(uploadDate),
+          escapeCsvField(uploadTime),
         ].join(",")
       )
     })

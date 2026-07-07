@@ -8,11 +8,20 @@ function formatStatus(status: string) {
   return status.replace("_", " ")
 }
 
-function formatSaveDate(isoStr: string) {
+function formatSaveDateTime(isoStr: string) {
   if (!isoStr) return "-"
   try {
     const parts = isoStr.split("T")
-    return parts[0]
+    const datePart = parts[0]
+    if (parts.length < 2) return datePart
+
+    const timePart = parts[1].split(".")[0]
+    const timeParts = timePart.split(":")
+    const hours = parseInt(timeParts[0], 10)
+    const minutes = timeParts[1]
+    const ampm = hours >= 12 ? "PM" : "AM"
+    const displayHours = hours % 12 || 12
+    return `${datePart} ${String(displayHours).padStart(2, "0")}:${minutes} ${ampm}`
   } catch {
     return isoStr
   }
@@ -200,7 +209,7 @@ export default function Dashboard() {
                     {item.amount} · {item.sender || "-"} · {item.uploaderName}
                   </p>
                   <p className="mt-1.5 text-xs text-slate-400">
-                    Txn Date: {item.date} {item.time ? `at ${item.time}` : ""} · Saved: {formatSaveDate(item.createdAt)}
+                    Txn Date: {item.date} {item.time ? `at ${item.time}` : ""} · Saved: {formatSaveDateTime(item.createdAt)}
                   </p>
                 </div>
               )) ?? null}

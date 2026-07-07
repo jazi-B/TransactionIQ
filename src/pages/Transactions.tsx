@@ -20,11 +20,20 @@ function formatStatus(status: string) {
   return status.replace("_", " ")
 }
 
-function formatSaveDate(isoStr: string) {
+function formatSaveDateTime(isoStr: string) {
   if (!isoStr) return "-"
   try {
     const parts = isoStr.split("T")
-    return parts[0]
+    const datePart = parts[0]
+    if (parts.length < 2) return datePart
+
+    const timePart = parts[1].split(".")[0]
+    const timeParts = timePart.split(":")
+    const hours = parseInt(timeParts[0], 10)
+    const minutes = timeParts[1]
+    const ampm = hours >= 12 ? "PM" : "AM"
+    const displayHours = hours % 12 || 12
+    return `${datePart} ${String(displayHours).padStart(2, "0")}:${minutes} ${ampm}`
   } catch {
     return isoStr
   }
@@ -128,7 +137,7 @@ export default function Transactions() {
               <span className="truncate" title={row.sender}>{row.sender || "-"}</span>
               <div>
                 <span>{row.uploaderName}</span>
-                <span className="text-[11px] text-slate-400 block mt-0.5">Saved: {formatSaveDate(row.createdAt)}</span>
+                <span className="text-[11px] text-slate-400 block mt-0.5">Saved: {formatSaveDateTime(row.createdAt)}</span>
               </div>
               <div>
                 <span>{row.date}</span>
@@ -184,7 +193,7 @@ export default function Transactions() {
                 <p>Sender: {row.sender || "-"}</p>
                 <p>Uploader: {row.uploaderName}</p>
                 <p>Transaction Date: {row.date} {row.time ? `at ${row.time}` : ""}</p>
-                <p>System Save Date: {formatSaveDate(row.createdAt)}</p>
+                <p>System Save Date: {formatSaveDateTime(row.createdAt)}</p>
                 <p>Document: {row.receiptName}</p>
               </div>
               {currentUser?.role === "admin" && (
