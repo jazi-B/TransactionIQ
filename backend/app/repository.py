@@ -11,6 +11,7 @@ from .schemas import (
     ResetPasswordRequest,
     SaveTransactionRequest,
     TransactionResponse,
+    UpdateTransactionRequest,
     UploadDraftResponse,
     UserResponse,
 )
@@ -334,6 +335,39 @@ class InMemoryRepository:
                 self._activities = self._activities[:12]
                 return True
         return False
+
+    def update_transaction(self, id: str, payload: UpdateTransactionRequest) -> TransactionResponse | None:
+        target = None
+        for item in self._transactions:
+            if item.id == id:
+                target = item
+                break
+        if not target:
+            return None
+
+        # Check duplication if transaction_id changed
+        new_txn_id = payload.transaction_id.strip()
+        if new_txn_id != target.transaction_id:
+            duplicate = self.find_duplicate(new_txn_id)
+            if duplicate and duplicate.id != id:
+                raise ValueError("This transaction ID has already been submitted.")
+
+        target.transaction_id = new_txn_id
+        target.sender = payload.sender.strip()
+        target.amount = payload.amount.strip()
+
+        self._activities.insert(
+            0,
+            ActivityResponse(
+                id=f"activity-{len(self._activities) + 1:03d}",
+                text=f"Finance Admin updated transaction {target.transaction_id}.",
+                tone="neutral",
+                created_at=datetime.utcnow().isoformat(),
+            ),
+        )
+        self._activities = self._activities[:12]
+        return target
+
 
     def build_upload_draft(
         self, file_name: str, channel: str, file_bytes: bytes

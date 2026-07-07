@@ -17,6 +17,7 @@ import {
   saveTransaction,
   signOut,
   deleteTransaction as deleteTransactionRequest,
+  updateTransaction as updateTransactionRequest,
 } from "@/services/api"
 import type {
   ActivityItem,
@@ -66,6 +67,10 @@ type AppState = {
   processUpload: (file: File) => Promise<UploadProcessingResult>
   saveDraft: () => Promise<SaveDraftResult>
   deleteTransaction: (transactionId: string) => Promise<{ ok: boolean; message: string }>
+  updateTransaction: (
+    id: string,
+    payload: { transactionId: string; sender: string; amount: string },
+  ) => Promise<{ ok: boolean; message: string }>
   setLastDuplicateId: (duplicateId: string | null) => void
   clearDuplicateFlag: () => void
   exportCsv: () => string
@@ -395,6 +400,30 @@ export const useAppStore = create<AppState>()(
             ),
           }))
           return { ok: true, message: "Transaction deleted successfully." }
+        } catch (error) {
+          return { ok: false, message: toMessage(error) }
+        }
+      },
+      updateTransaction: async (id, payload) => {
+        const token = get().token
+        const currentUser = get().currentUser
+        if (!token || !currentUser || currentUser.role !== "admin") {
+          return { ok: false, message: "Admin access required." }
+        }
+
+        try {
+          const updatedTransaction = await updateTransactionRequest(token, id, payload)
+          set((state) => ({
+            transactions: state.transactions.map((item) =>
+              item.id === id ? updatedTransaction : item
+            ),
+            activities: pushActivity(
+              state.activities,
+              `${currentUser.name} updated transaction ${payload.transactionId}.`,
+              "neutral",
+            ),
+          }))
+          return { ok: true, message: "Transaction updated successfully." }
         } catch (error) {
           return { ok: false, message: toMessage(error) }
         }

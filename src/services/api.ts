@@ -371,3 +371,24 @@ export async function deleteTransaction(
   })
   return { ok: true }
 }
+
+export async function updateTransaction(
+  token: string,
+  id: string,
+  payload: { transactionId: string; sender: string; amount: string },
+): Promise<Transaction> {
+  const result = await request<TransactionApi>(`/transactions/${id}`, {
+    method: "PATCH",
+    token,
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      transaction_id: payload.transactionId,
+      sender: payload.sender,
+      amount: payload.amount,
+    }),
+  })
+  return mapTransaction(result)
+}
+

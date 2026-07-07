@@ -117,3 +117,9 @@ class DashboardSummaryResponse(BaseModel):
     approved_records: int
     activities: list[ActivityResponse]
     recent_transactions: list[TransactionResponse]
+
+
+class UpdateTransactionRequest(BaseModel):
+    transaction_id: str
+    sender: str
+    amount: str

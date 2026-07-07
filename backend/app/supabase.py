@@ -16,6 +16,7 @@ from .schemas import (
     ResetPasswordRequest,
     SaveTransactionRequest,
     TransactionResponse,
+    UpdateTransactionRequest,
     UploadDraftResponse,
     UserResponse,
 )
@@ -467,6 +468,47 @@ class SupabaseRepository:
             },
         )
         return True
+
+    def update_transaction(self, id: str, payload: UpdateTransactionRequest) -> TransactionResponse | None:
+        # Search by database id
+        rows = self._select("transactions", filters={"id": f"eq.{id}"}, limit=1)
+        if not rows:
+            return None
+
+        current_record = rows[0]
+
+        # Check duplicate if transaction_id changes
+        new_txn_id = payload.transaction_id.strip()
+        if new_txn_id != current_record["transaction_id"]:
+            duplicate = self.find_duplicate(new_txn_id)
+            if duplicate and duplicate.id != id:
+                raise ValueError("This transaction ID has already been submitted.")
+
+        # Update row in database
+        updated = self._update(
+            "transactions",
+            {"id": f"eq.{id}"},
+            {
+                "transaction_id": new_txn_id,
+                "sender": payload.sender.strip(),
+                "amount": payload.amount.strip(),
+            },
+        )
+        if not updated:
+            return None
+
+        # Log activity
+        self._insert(
+            "activity_logs",
+            {
+                "id": f"activity-{int(datetime.utcnow().timestamp() * 1000)}",
+                "text": f"Finance Admin updated transaction {new_txn_id}.",
+                "tone": "neutral",
+                "created_at": datetime.utcnow().isoformat(),
+            },
+        )
+        return self._map_transaction(updated[0])
+
 
     def build_upload_draft(
         self, file_name: str, channel: str, file_bytes: bytes

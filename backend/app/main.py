@@ -15,6 +15,7 @@ from .schemas import (
     ResetPasswordRequest,
     SaveTransactionRequest,
     TransactionResponse,
+    UpdateTransactionRequest,
     UploadProcessResponse,
     UserResponse,
 )
@@ -265,3 +266,43 @@ def delete_transaction(
             detail="Transaction not found.",
         )
     return {"status": "deleted"}
+
+
+@app.patch("/api/transactions/{id}", response_model=TransactionResponse)
+def update_transaction(
+    id: str,
+    payload: UpdateTransactionRequest,
+    user: dict = Depends(require_admin),
+) -> TransactionResponse:
+    del user
+    if not payload.transaction_id.strip():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Transaction ID cannot be empty.",
+        )
+    if not payload.sender.strip():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Sender name cannot be empty.",
+        )
+    if not payload.amount.strip():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Amount cannot be empty.",
+        )
+
+    try:
+        record = repository.update_transaction(id, payload)
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(error),
+        ) from error
+
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Transaction not found.",
+        )
+    return record
+

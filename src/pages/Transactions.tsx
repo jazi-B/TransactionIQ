@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 
 import AppShell from "@/components/AppShell"
 import { useAppStore } from "@/store/appStore"
@@ -45,7 +45,15 @@ export default function Transactions() {
   const exportCsv = useAppStore((state) => state.exportCsv)
   const loadTransactions = useAppStore((state) => state.loadTransactions)
   const deleteTransaction = useAppStore((state) => state.deleteTransaction)
+  const updateTransaction = useAppStore((state) => state.updateTransaction)
   const isDataLoading = useAppStore((state) => state.isDataLoading)
+
+  const [editingTransaction, setEditingTransaction] = useState<typeof transactions[0] | null>(null)
+  const [editTransactionId, setEditTransactionId] = useState("")
+  const [editSender, setEditSender] = useState("")
+  const [editAmount, setEditAmount] = useState("")
+  const [editError, setEditError] = useState<string | null>(null)
+  const [isSavingEdit, setIsSavingEdit] = useState(false)
 
   useEffect(() => {
     void loadTransactions()
@@ -57,8 +65,36 @@ export default function Transactions() {
       : transactions.filter((row) => row.uploaderId === currentUser?.id)
 
   const gridClasses = currentUser?.role === "admin"
-    ? "grid grid-cols-[1.15fr_1fr_1.1fr_0.9fr_1fr_0.9fr_1fr_0.45fr] gap-3 items-center"
+    ? "grid grid-cols-[1.15fr_1fr_1.1fr_0.9fr_1fr_0.9fr_1fr_0.8fr] gap-3 items-center"
     : "grid grid-cols-[1.15fr_1fr_1fr_0.9fr_1fr_0.9fr_1fr] gap-3 items-center"
+
+  const handleEditClick = (row: typeof transactions[0]) => {
+    setEditingTransaction(row)
+    setEditTransactionId(row.transactionId)
+    setEditSender(row.sender || "")
+    setEditAmount(row.amount)
+    setEditError(null)
+  }
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingTransaction) return
+    setIsSavingEdit(true)
+    setEditError(null)
+
+    const result = await updateTransaction(editingTransaction.id, {
+      transactionId: editTransactionId,
+      sender: editSender,
+      amount: editAmount,
+    })
+
+    setIsSavingEdit(false)
+    if (result.ok) {
+      setEditingTransaction(null)
+    } else {
+      setEditError(result.message)
+    }
+  }
 
   const handleDelete = async (transactionId: string) => {
     if (window.confirm("Are you sure you want to delete this transaction? This action is permanent and cannot be undone.")) {
@@ -151,13 +187,23 @@ export default function Transactions() {
                 {formatStatus(row.status)}
               </span>
               {currentUser?.role === "admin" && (
-                <button
-                  type="button"
-                  onClick={() => void handleDelete(row.id)}
-                  className="text-rose-600 hover:text-rose-900 transition font-medium"
-                >
-                  Delete
-                </button>
+                <div className="flex gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => handleEditClick(row)}
+                    className="text-indigo-600 hover:text-indigo-900 transition font-medium"
+                  >
+                    Edit
+                  </button>
+                  <span className="text-slate-300">|</span>
+                  <button
+                    type="button"
+                    onClick={() => void handleDelete(row.id)}
+                    className="text-rose-600 hover:text-rose-900 transition font-medium"
+                  >
+                    Delete
+                  </button>
+                </div>
               )}
             </div>
           ))}
@@ -197,7 +243,14 @@ export default function Transactions() {
                 <p>Document: {row.receiptName}</p>
               </div>
               {currentUser?.role === "admin" && (
-                <div className="mt-4 border-t border-slate-200 pt-3 flex justify-end">
+                <div className="mt-4 border-t border-slate-200 pt-3 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleEditClick(row)}
+                    className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition"
+                  >
+                    Edit
+                  </button>
                   <button
                     type="button"
                     onClick={() => void handleDelete(row.id)}
@@ -217,6 +270,80 @@ export default function Transactions() {
           </div>
         ) : null}
       </section>
+
+      {editingTransaction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-md px-4 py-6">
+          <div className="w-full max-w-lg overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-2xl transition-all">
+            <div className="border-b border-slate-100 px-6 py-5">
+              <h3 className="text-xl font-semibold text-slate-950">
+                Edit Transaction Details
+              </h3>
+              <p className="mt-1 text-sm text-slate-500">
+                Update transaction reference code, sender name, or amount.
+              </p>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="p-6 space-y-4">
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-700">Transaction ID</span>
+                <input
+                  value={editTransactionId}
+                  onChange={(e) => setEditTransactionId(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
+                  placeholder="Enter reference ID"
+                  required
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-700">Sender Name</span>
+                <input
+                  value={editSender}
+                  onChange={(e) => setEditSender(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
+                  placeholder="Enter sender name"
+                  required
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-700">Amount</span>
+                <input
+                  value={editAmount}
+                  onChange={(e) => setEditAmount(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
+                  placeholder="e.g. Rs. 5,000"
+                  required
+                />
+              </label>
+
+              {editError && (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                  {editError}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingTransaction(null)}
+                  disabled={isSavingEdit}
+                  className="rounded-full border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingEdit}
+                  className="rounded-full bg-slate-950 px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:bg-slate-300 disabled:cursor-not-allowed"
+                >
+                  {isSavingEdit ? "Saving..." : "Save changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </AppShell>
   )
 }
