@@ -462,16 +462,20 @@ export const useAppStore = create<AppState>()(
           let uploadTime = "-"
           if (entry.createdAt) {
             try {
-              const parts = entry.createdAt.split("T")
-              uploadDate = parts[0]
-              if (parts.length >= 2) {
-                const timePart = parts[1].split(".")[0]
-                const timeParts = timePart.split(":")
-                const hours = parseInt(timeParts[0], 10)
-                const minutes = timeParts[1]
-                const ampm = hours >= 12 ? "PM" : "AM"
-                const displayHours = hours % 12 || 12
-                uploadTime = `${String(displayHours).padStart(2, "0")}:${minutes} ${ampm}`
+              // Ensure we treat it as UTC if it lacks the Z suffix
+              const dateObj = new Date(entry.createdAt + (entry.createdAt.endsWith("Z") ? "" : "Z"))
+              
+              if (!isNaN(dateObj.getTime())) {
+                const year = dateObj.getFullYear()
+                const month = String(dateObj.getMonth() + 1).padStart(2, "0")
+                const day = String(dateObj.getDate()).padStart(2, "0")
+                uploadDate = `${year}-${month}-${day}`
+                
+                uploadTime = dateObj.toLocaleTimeString("en-US", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true
+                })
               }
             } catch {}
           }
