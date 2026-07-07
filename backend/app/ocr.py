@@ -244,15 +244,21 @@ def parse_transaction_id(text: str) -> str:
     if not text:
         return ""
 
+    ignore_words = {
+        "SUCCESSFUL", "SUCCESS", "FAILED", "PENDING", "DETAILS", "SUMMARY",
+        "HISTORY", "COMPLETED", "PROCESSED", "DECLINED", "AMOUNT", "PKR",
+        "RS", "FEE", "CHARGES", "TAX", "DATE", "TIME", "FUNDS", "TRANSFER"
+    }
+
     for pattern in TRANSACTION_ID_PATTERNS:
-        match = pattern.search(text)
-        if not match:
-            continue
-        compact = re.sub(r"[^a-zA-Z0-9]", "", match.group(1)).upper()
-        if len(compact) >= 4:
-            if is_phone_number(compact):
+        for match in pattern.finditer(text):
+            compact = re.sub(r"[^a-zA-Z0-9]", "", match.group(1)).upper()
+            if compact in ignore_words:
                 continue
-            return compact
+            if len(compact) >= 4:
+                if is_phone_number(compact):
+                    continue
+                return compact
     return ""
 
 
