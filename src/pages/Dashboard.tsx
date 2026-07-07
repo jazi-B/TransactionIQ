@@ -92,7 +92,7 @@ export default function Dashboard() {
       }
     })
 
-    for (const transaction of dashboardSummary?.recentTransactions ?? []) {
+    for (const transaction of transactions) {
       const createdAt = transaction.createdAt.slice(0, 10)
       const bucket = days.find((item) => item.key === createdAt)
       if (bucket) {
@@ -106,7 +106,7 @@ export default function Dashboard() {
       ...item,
       height: maxCount > 0 ? Math.max(18, Math.round((item.count / maxCount) * 100)) : 0,
     }))
-  }, [dashboardSummary?.recentTransactions])
+  }, [transactions])
   const hasTrendData = trendBuckets.some((item) => item.count > 0)
 
   return (
